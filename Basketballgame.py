@@ -1,31 +1,49 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Ultimate Basketball Game", layout="wide")
+st.set_page_config(page_title="3D Basketball Game", layout="wide")
 
-st.title("🏀 Ultimate Basketball Game")
+st.title("🏀 3D Basketball Game (Mobile + Desktop)")
 
 html_code = """
 <!DOCTYPE html>
 <html>
 <head>
-<style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-body{
-    margin:0;
-    overflow:hidden;
-    background:#0f172a;
-    font-family:Arial;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<style>
+body {
+    margin: 0;
+    overflow: hidden;
+    background: #0f172a;
+    font-family: Arial;
 }
 
-canvas{
-    display:block;
-    margin:auto;
-    margin-top:10px;
-    border-radius:18px;
-    border:5px solid #1e293b;
-    box-shadow:0 0 30px rgba(0,0,0,0.5);
-    background:linear-gradient(#60a5fa,#dbeafe);
+#ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-size: 20px;
+    background: rgba(0,0,0,0.5);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+button {
+    font-size: 20px;
+    padding: 15px;
+    margin: 5px;
+    border-radius: 10px;
+}
+
+#controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 </style>
@@ -33,95 +51,113 @@ canvas{
 
 <body>
 
-<canvas id="gameCanvas" width="1400" height="760"></canvas>
+<div id="ui">
+Score: <span id="score">0</span>
+</div>
+
+<div id="controls">
+<button onclick="moveLeft()">⬅️</button>
+<button onclick="jump()">⬆️</button>
+<button onclick="moveRight()">➡️</button>
+<button onclick="shoot()">🏀 Shoot</button>
+</div>
 
 <script>
 
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+// ==========================
+// BASIC SETUP
+// ==========================
 
-// ======================================
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 12);
+
+let renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// ==========================
+// LIGHT
+// ==========================
+
+let light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5,10,5);
+scene.add(light);
+
+// ==========================
+// COURT
+// ==========================
+
+let floorGeo = new THREE.PlaneGeometry(30, 20);
+let floorMat = new THREE.MeshStandardMaterial({color:0xd2691e});
+let floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+// ==========================
+// PLAYER
+// ==========================
+
+let playerGeo = new THREE.BoxGeometry(1,2,1);
+let playerMat = new THREE.MeshStandardMaterial({color:0x2563eb});
+let player = new THREE.Mesh(playerGeo, playerMat);
+player.position.set(-10,1,0);
+scene.add(player);
+
+// ==========================
+// BALL
+// ==========================
+
+let ballGeo = new THREE.SphereGeometry(0.3,16,16);
+let ballMat = new THREE.MeshStandardMaterial({color:0xffa500});
+let ball = new THREE.Mesh(ballGeo, ballMat);
+scene.add(ball);
+
+let ballVel = {x:0,y:0,z:0};
+let holdingBall = true;
+
+// ==========================
+// HOOP (FIXED TO WALL)
+// ==========================
+
+let backboardGeo = new THREE.BoxGeometry(0.2,3,2);
+let backboardMat = new THREE.MeshStandardMaterial({color:0xffffff});
+let backboard = new THREE.Mesh(backboardGeo, backboardMat);
+backboard.position.set(12,3,0);
+scene.add(backboard);
+
+// rim
+let rimGeo = new THREE.TorusGeometry(0.7,0.05,16,100);
+let rimMat = new THREE.MeshStandardMaterial({color:0xff0000});
+let rim = new THREE.Mesh(rimGeo, rimMat);
+rim.position.set(11,2.5,0);
+rim.rotation.x = Math.PI/2;
+scene.add(rim);
+
+// hoop center
+let hoopX = 11;
+let hoopY = 2.5;
+let hoopZ = 0;
+
+// ==========================
 // GAME VARIABLES
-// ======================================
+// ==========================
 
 let score = 0;
-let highScore = 0;
-let particles = [];
 
-let alreadyScored = false;
-
-// ======================================
-// PLAYER
-// ======================================
-
-const player = {
-    x: 120,
-    y: 560,
-    width: 60,
-    height: 100,
-    speed: 7,
-    velY: 0,
-    jumping: false,
-    holdingBall: true
-};
-
-// ======================================
-// BALL
-// ======================================
-
-const ball = {
-    x: 0,
-    y: 0,
-    radius: 16,
-    dx: 0,
-    dy: 0,
-    gravity: 0.42,
-    shooting: false,
-    trail:[]
-};
-
-// ======================================
-// HOOP + BACKBOARD
-// ======================================
-
-const hoop = {
-    x: 1120,
-    y: 250,
-    width: 90,
-    height: 12
-};
-
-const backboard = {
-    x: 1210,
-    y: 170,
-    width: 18,
-    height: 140
-};
-
-// ======================================
-// THREE POINT LINE
-// ======================================
-
-const threePointLine = {
-    x: 520,
-    radius: 320
-};
-
-// ======================================
+// ==========================
 // CONTROLS
-// ======================================
+// ==========================
 
-const keys = {};
+let keys = {};
 
 document.addEventListener("keydown",(e)=>{
-
     keys[e.code] = true;
 
-    // Jump
-    if(e.code === "Space" && !player.jumping){
-
-        player.velY = -17;
-        player.jumping = true;
+    if(e.code === "Space"){
+        jump();
     }
 });
 
@@ -129,467 +165,124 @@ document.addEventListener("keyup",(e)=>{
     keys[e.code] = false;
 });
 
-// ======================================
-// SHOOTING
-// ======================================
+// ==========================
+// MOBILE BUTTONS
+// ==========================
 
-let charging = false;
-let shootPower = 0;
+function moveLeft(){ player.position.x -= 0.7; }
+function moveRight(){ player.position.x += 0.7; }
 
-// ======================================
-// PARTICLES
-// ======================================
-
-function createParticles(x,y){
-
-    for(let i=0;i<40;i++){
-
-        particles.push({
-
-            x:x,
-            y:y,
-
-            dx:(Math.random()-0.5)*8,
-            dy:(Math.random()-0.5)*8,
-
-            size:Math.random()*7 + 2,
-            life:100
-        });
+function jump(){
+    if(player.position.y <= 1){
+        player.position.y = 3;
     }
 }
 
-function updateParticles(){
+function shoot(){
+    if(!holdingBall) return;
 
-    for(let i=particles.length-1;i>=0;i--){
+    holdingBall = false;
 
-        let p = particles[i];
+    ball.position.set(player.position.x, 2, player.position.z);
 
-        p.x += p.dx;
-        p.y += p.dy;
-
-        p.life--;
-
-        if(p.life <= 0){
-            particles.splice(i,1);
-        }
-    }
+    ballVel.x = 0.2;
+    ballVel.y = 0.35;
+    ballVel.z = 0;
 }
 
-function drawParticles(){
-
-    for(let p of particles){
-
-        ctx.beginPath();
-
-        ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
-
-        ctx.fillStyle = "gold";
-
-        ctx.fill();
-    }
-}
-
-// ======================================
-// DRAW PLAYER
-// ======================================
-
-function drawPlayer(){
-
-    // Legs
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 6;
-
-    ctx.beginPath();
-    ctx.moveTo(player.x+15,player.y+100);
-    ctx.lineTo(player.x+10,player.y+140);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(player.x+45,player.y+100);
-    ctx.lineTo(player.x+50,player.y+140);
-    ctx.stroke();
-
-    // Body
-    ctx.fillStyle = "#2563eb";
-    ctx.fillRect(player.x,player.y,player.width,100);
-
-    // Number
-    ctx.fillStyle = "white";
-    ctx.font = "30px Arial";
-    ctx.fillText("23",player.x+13,player.y+60);
-
-    // Head
-    ctx.beginPath();
-    ctx.arc(player.x+30,player.y-20,22,0,Math.PI*2);
-    ctx.fillStyle = "#FFD39B";
-    ctx.fill();
-
-    // Arm
-    ctx.strokeStyle = "#FFD39B";
-    ctx.lineWidth = 8;
-
-    ctx.beginPath();
-    ctx.moveTo(player.x+60,player.y+25);
-    ctx.lineTo(player.x+82,player.y+15);
-    ctx.stroke();
-}
-
-// ======================================
-// DRAW BALL
-// ======================================
-
-function drawBall(){
-
-    // Trail
-    for(let t of ball.trail){
-
-        ctx.beginPath();
-
-        ctx.arc(t.x,t.y,ball.radius-5,0,Math.PI*2);
-
-        ctx.fillStyle = "rgba(255,140,0,0.2)";
-
-        ctx.fill();
-    }
-
-    ctx.beginPath();
-
-    ctx.arc(ball.x,ball.y,ball.radius,0,Math.PI*2);
-
-    let gradient = ctx.createRadialGradient(
-        ball.x-5,
-        ball.y-5,
-        5,
-        ball.x,
-        ball.y,
-        20
-    );
-
-    gradient.addColorStop(0,"#fde68a");
-    gradient.addColorStop(1,"#ea580c");
-
-    ctx.fillStyle = gradient;
-    ctx.fill();
-
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-}
-
-// ======================================
-// DRAW COURT
-// ======================================
-
-function drawCourt(){
-
-    // Floor
-    ctx.fillStyle = "#c2410c";
-    ctx.fillRect(0,680,canvas.width,80);
-
-    // Court details
-    ctx.strokeStyle = "rgba(255,255,255,0.15)";
-    ctx.lineWidth = 2;
-
-    for(let i=0;i<canvas.width;i+=80){
-
-        ctx.beginPath();
-        ctx.moveTo(i,680);
-        ctx.lineTo(i,760);
-        ctx.stroke();
-    }
-
-    // THREE POINT LINE
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 5;
-
-    ctx.beginPath();
-    ctx.arc(
-        threePointLine.x,
-        680,
-        threePointLine.radius,
-        Math.PI,
-        0
-    );
-    ctx.stroke();
-
-    // Hoop support connected to wall
-    ctx.fillStyle = "#111";
-
-    // Wall support
-    ctx.fillRect(1320,100,20,350);
-
-    // Horizontal support arm
-    ctx.fillRect(1180,180,160,12);
-
-    // Backboard
-    ctx.fillStyle = "white";
-    ctx.fillRect(
-        backboard.x,
-        backboard.y,
-        backboard.width,
-        backboard.height
-    );
-
-    // Rim
-    ctx.fillStyle = "red";
-    ctx.fillRect(hoop.x,hoop.y,hoop.width,hoop.height);
-
-    // Net
-    ctx.strokeStyle = "white";
-
-    for(let i=0;i<8;i++){
-
-        ctx.beginPath();
-
-        ctx.moveTo(hoop.x + i*12, hoop.y+12);
-        ctx.lineTo(hoop.x + 10 + i*9, hoop.y+50);
-
-        ctx.stroke();
-    }
-}
-
-// ======================================
-// UI
-// ======================================
-
-function drawUI(){
-
-    ctx.fillStyle = "rgba(15,23,42,0.75)";
-    ctx.fillRect(25,25,360,220);
-
-    ctx.strokeStyle = "rgba(255,255,255,0.2)";
-    ctx.strokeRect(25,25,360,220);
-
-    ctx.fillStyle = "#f8fafc";
-    ctx.font = "bold 34px Arial";
-    ctx.fillText("SCOREBOARD",50,70);
-
-    ctx.fillStyle = "#22c55e";
-    ctx.font = "bold 50px Arial";
-    ctx.fillText(score,60,140);
-
-    ctx.fillStyle = "#facc15";
-    ctx.font = "28px Arial";
-    ctx.fillText("High Score: " + highScore,60,190);
-
-    ctx.fillStyle = "white";
-    ctx.font = "20px Arial";
-
-    ctx.fillText("A / D → Move",980,50);
-    ctx.fillText("SPACE → Jump",980,80);
-    ctx.fillText("Hold T → Shoot",980,110);
-
-    // Power bar
-    if(charging){
-
-        ctx.fillStyle = "#22c55e";
-
-        ctx.fillRect(50,215,shootPower*10,22);
-
-        ctx.strokeStyle = "white";
-        ctx.strokeRect(50,215,260,22);
-    }
-}
-
-// ======================================
-// PLAYER UPDATE
-// ======================================
-
-function updatePlayer(){
-
-    if(keys["KeyA"] || keys["ArrowLeft"]){
-        player.x -= player.speed;
-    }
-
-    if(keys["KeyD"] || keys["ArrowRight"]){
-        player.x += player.speed;
-    }
-
-    // Gravity
-    player.y += player.velY;
-    player.velY += 0.8;
-
-    // Ground collision
-    if(player.y >= 560){
-
-        player.y = 560;
-        player.velY = 0;
-        player.jumping = false;
-    }
-
-    // Bounds
-    if(player.x < 0) player.x = 0;
-
-    if(player.x + player.width > canvas.width){
-        player.x = canvas.width - player.width;
-    }
-
-    // Hold ball
-    if(player.holdingBall){
-
-        ball.x = player.x + 75;
-        ball.y = player.y + 25;
-    }
-
-    // Charge shot
-    if(keys["KeyT"] && player.holdingBall){
-
-        charging = true;
-
-        if(shootPower < 30){
-            shootPower += 0.4;
-        }
-    }
-
-    // Shoot
-    if(!keys["KeyT"] && charging && player.holdingBall){
-
-        player.holdingBall = false;
-
-        ball.shooting = true;
-
-        ball.dx = shootPower * 0.65;
-        ball.dy = -shootPower * 1.4;
-
-        charging = false;
-        shootPower = 0;
-    }
-}
-
-// ======================================
-// BALL UPDATE
-// ======================================
+// ==========================
+// UPDATE BALL
+// ==========================
 
 function updateBall(){
 
-    if(ball.shooting){
+    if(holdingBall){
+        ball.position.set(player.position.x, 2, player.position.z);
+        return;
+    }
 
-        ball.x += ball.dx;
-        ball.y += ball.dy;
+    ball.position.x += ballVel.x;
+    ball.position.y += ballVel.y;
+    ball.position.z += ballVel.z;
 
-        ball.dy += ball.gravity;
+    ballVel.y -= 0.015; // gravity
 
-        // Trail
-        ball.trail.push({
-            x:ball.x,
-            y:ball.y
-        });
+    // ground
+    if(ball.position.y < 0.3){
+        ball.position.y = 0.3;
+        ballVel.y *= -0.6;
+    }
 
-        if(ball.trail.length > 12){
-            ball.trail.shift();
-        }
+    // backboard collision
+    if(ball.position.x > 10.8 &&
+       ball.position.y < 5 &&
+       ball.position.y > 1 &&
+       Math.abs(ball.position.z) < 1.2){
 
-        // Floor bounce
-        if(ball.y + ball.radius > 680){
+        ballVel.x *= -0.8;
+    }
 
-            ball.y = 680 - ball.radius;
-            ball.dy *= -0.72;
-        }
+    // SCORE CHECK (must go DOWN into hoop)
+    let dx = ball.position.x - hoopX;
+    let dy = ball.position.y - hoopY;
+    let dz = ball.position.z - hoopZ;
 
-        // Wall bounce
-        if(ball.x + ball.radius > canvas.width ||
-           ball.x - ball.radius < 0){
+    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-            ball.dx *= -0.8;
-        }
+    if(dist < 0.8 && ballVel.y < 0){
 
-        // BACKBOARD COLLISION
-        if(
-            ball.x + ball.radius > backboard.x &&
-            ball.x - ball.radius < backboard.x + backboard.width &&
-            ball.y + ball.radius > backboard.y &&
-            ball.y - ball.radius < backboard.y + backboard.height
-        ){
+        score++;
+        document.getElementById("score").innerText = score;
 
-            // Push ball away
-            ball.x = backboard.x - ball.radius;
+        resetBall();
+    }
 
-            // Bounce back
-            ball.dx *= -0.9;
-        }
-
-        // Friction
-        ball.dx *= 0.995;
-
-        // ONLY SCORE FROM ABOVE
-        if(
-            ball.x > hoop.x &&
-            ball.x < hoop.x + hoop.width &&
-            ball.y > hoop.y &&
-            ball.y < hoop.y + 20 &&
-            ball.dy > 0 &&
-            !alreadyScored
-        ){
-
-            alreadyScored = true;
-
-            // 3 POINTER
-            let points = 2;
-
-            if(player.x < 220){
-                points = 3;
-            }
-
-            score += points;
-
-            if(score > highScore){
-                highScore = score;
-            }
-
-            createParticles(ball.x,ball.y);
-        }
-
-        // Reset scoring flag
-        if(ball.y > hoop.y + 100){
-            alreadyScored = false;
-        }
-
-        // Pickup ball
-        let distX = ball.x - (player.x + 30);
-        let distY = ball.y - (player.y + 50);
-
-        let distance = Math.sqrt(distX*distX + distY*distY);
-
-        if(distance < 55){
-
-            player.holdingBall = true;
-
-            ball.shooting = false;
-
-            ball.dx = 0;
-            ball.dy = 0;
-
-            ball.trail = [];
-        }
+    // reset if missed
+    if(ball.position.y < -5 || ball.position.x > 20){
+        resetBall();
     }
 }
 
-// ======================================
-// GAME LOOP
-// ======================================
+function resetBall(){
+    holdingBall = true;
+    ballVel = {x:0,y:0,z:0};
+}
 
-function gameLoop(){
+// ==========================
+// UPDATE PLAYER (keyboard)
+// ==========================
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+function updatePlayer(){
 
-    drawCourt();
+    if(keys["ArrowLeft"] || keys["KeyA"]){
+        player.position.x -= 0.2;
+    }
+
+    if(keys["ArrowRight"] || keys["KeyD"]){
+        player.position.x += 0.2;
+    }
+}
+
+// ==========================
+// LOOP
+// ==========================
+
+function animate(){
+    requestAnimationFrame(animate);
 
     updatePlayer();
     updateBall();
 
-    updateParticles();
-
-    drawPlayer();
-    drawBall();
-
-    drawParticles();
-
-    drawUI();
-
-    requestAnimationFrame(gameLoop);
+    renderer.render(scene, camera);
 }
 
-gameLoop();
+animate();
+
+window.addEventListener("resize",()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
 </script>
 
@@ -597,4 +290,4 @@ gameLoop();
 </html>
 """
 
-components.html(html_code, height=780)
+components.html(html_code, height=800)
