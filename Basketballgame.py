@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Cross Platform Basketball", layout="wide")
+st.set_page_config(page_title="Basketball Hold-to-Shoot", layout="wide")
 
-st.title("🏀 Cross-Platform 2D Basketball (PC + Mobile)")
+st.title("🏀 Hold-to-Shoot Basketball (PC + Mobile)")
 
 html_code = """
 <!DOCTYPE html>
@@ -34,35 +34,34 @@ canvas {
     border-radius: 10px;
 }
 
-/* MOBILE CONTROLS */
+/* MOBILE BUTTON */
 #controls {
     position: absolute;
     bottom: 15px;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
 }
 
 button {
     font-size: 18px;
-    padding: 14px;
+    padding: 16px;
     border-radius: 12px;
-    border: none;
     background: #222;
     color: white;
+    border: none;
 }
 </style>
 </head>
 
 <body>
 
-<div id="ui">Score: <span id="score">0</span></div>
+<div id="ui">
+Score: <span id="score">0</span><br>
+Power: <span id="power">0</span>
+</div>
 
 <div id="controls">
-<button onclick="press('left')">⬅️</button>
-<button onclick="press('right')">➡️</button>
-<button onclick="press('shoot')">🏀 SHOOT</button>
+<button id="shootBtn">🏀 HOLD TO SHOOT</button>
 </div>
 
 <canvas id="game" width="1200" height="600"></canvas>
@@ -77,6 +76,8 @@ const ctx = canvas.getContext("2d");
 // =====================
 
 let score = 0;
+let power = 0;
+let charging = false;
 
 const player = {
     x: 100,
@@ -112,34 +113,56 @@ const backboard = {
 };
 
 // =====================
-// INPUT SYSTEM (UNIFIED)
+// INPUT
 // =====================
 
 let keys = {};
 
-// keyboard (PC)
+// PC KEYBOARD
 document.addEventListener("keydown",(e)=>{
+
     keys[e.code] = true;
 
-    if(e.code === "Space"){
-        shoot();
+    // HOLD T TO CHARGE
+    if(e.code === "KeyT" && player.holding){
+        charging = true;
     }
 });
 
 document.addEventListener("keyup",(e)=>{
+
     keys[e.code] = false;
+
+    // RELEASE T TO SHOOT
+    if(e.code === "KeyT" && charging){
+        shoot();
+        charging = false;
+        power = 0;
+    }
 });
 
-// mobile buttons
-function press(action){
+// =====================
+// MOBILE HOLD BUTTON
+// =====================
 
-    if(action === "left") player.x -= player.speed;
-    if(action === "right") player.x += player.speed;
-    if(action === "shoot") shoot();
-}
+const shootBtn = document.getElementById("shootBtn");
+
+shootBtn.addEventListener("touchstart",()=>{
+    if(player.holding){
+        charging = true;
+    }
+});
+
+shootBtn.addEventListener("touchend",()=>{
+    if(charging){
+        shoot();
+        charging = false;
+        power = 0;
+    }
+});
 
 // =====================
-// SHOOT
+// SHOOT (POWER BASED)
 // =====================
 
 function shoot(){
@@ -148,8 +171,10 @@ function shoot(){
     player.holding = false;
     ball.moving = true;
 
-    ball.dx = 10;
-    ball.dy = -13;
+    let strength = Math.min(power / 20, 1);
+
+    ball.dx = 6 + strength * 6;
+    ball.dy = -10 - strength * 8;
 }
 
 // =====================
@@ -186,13 +211,11 @@ function resetBall(){
 
 function updatePlayer(){
 
-    // PC MOVEMENT
     if(keys["KeyA"] || keys["ArrowLeft"]) player.x -= player.speed;
     if(keys["KeyD"] || keys["ArrowRight"]) player.x += player.speed;
 
     player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
-    // BALL FOLLOW HAND
     if(player.holding){
         ball.x = player.x + 20;
         ball.y = player.y;
@@ -202,10 +225,15 @@ function updatePlayer(){
 }
 
 // =====================
-// UPDATE BALL
+// BALL UPDATE
 // =====================
 
 function updateBall(){
+
+    if(charging){
+        power++;
+        if(power > 100) power = 100;
+    }
 
     if(!ball.moving) return;
 
@@ -214,7 +242,6 @@ function updateBall(){
 
     ball.dy += ball.gravity;
 
-    // floor
     if(ball.y > canvas.height - 20){
         resetBall();
     }
@@ -241,7 +268,6 @@ function updateBall(){
         resetBall();
     }
 
-    // OUT OF BOUNDS
     if(ball.x < 0 || ball.x > canvas.width){
         resetBall();
     }
@@ -281,6 +307,13 @@ function draw(){
 
     ctx.fillStyle = "red";
     ctx.fillRect(hoop.x, hoop.y, hoop.w, hoop.h);
+
+    // power bar
+    ctx.fillStyle = "black";
+    ctx.fillRect(20, 80, 100, 10);
+
+    ctx.fillStyle = "lime";
+    ctx.fillRect(20, 80, power, 10);
 }
 
 // =====================
@@ -288,6 +321,7 @@ function draw(){
 // =====================
 
 function loop(){
+
     updatePlayer();
     updateBall();
     draw();
