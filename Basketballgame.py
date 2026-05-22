@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Mobile Basketball", layout="wide")
+st.set_page_config(page_title="Cross Platform Basketball", layout="wide")
 
-st.title("🏀 Mobile 2D Basketball Game (Touch Friendly)")
+st.title("🏀 Cross-Platform 2D Basketball (PC + Mobile)")
 
 html_code = """
 <!DOCTYPE html>
@@ -18,13 +18,12 @@ body {
     font-family: Arial;
 }
 
-/* CANVAS */
 canvas {
     background: #87CEEB;
     display: block;
 }
 
-/* SCORE UI */
+/* UI */
 #ui {
     position: absolute;
     top: 10px;
@@ -46,11 +45,11 @@ canvas {
 }
 
 button {
-    font-size: 20px;
-    padding: 15px;
+    font-size: 18px;
+    padding: 14px;
     border-radius: 12px;
     border: none;
-    background: #333;
+    background: #222;
     color: white;
 }
 </style>
@@ -61,9 +60,9 @@ button {
 <div id="ui">Score: <span id="score">0</span></div>
 
 <div id="controls">
-<button onclick="moveLeft()">⬅️</button>
-<button onclick="moveRight()">➡️</button>
-<button onclick="shoot()">🏀 SHOOT</button>
+<button onclick="press('left')">⬅️</button>
+<button onclick="press('right')">➡️</button>
+<button onclick="press('shoot')">🏀 SHOOT</button>
 </div>
 
 <canvas id="game" width="1200" height="600"></canvas>
@@ -84,7 +83,7 @@ const player = {
     y: 450,
     w: 40,
     h: 80,
-    speed: 8,
+    speed: 7,
     holding: true
 };
 
@@ -94,7 +93,7 @@ const ball = {
     r: 12,
     dx: 0,
     dy: 0,
-    gravity: 0.6,
+    gravity: 0.5,
     moving: false
 };
 
@@ -113,19 +112,34 @@ const backboard = {
 };
 
 // =====================
-// MOBILE BUTTONS
+// INPUT SYSTEM (UNIFIED)
 // =====================
 
-function moveLeft(){
-    player.x -= player.speed;
-}
+let keys = {};
 
-function moveRight(){
-    player.x += player.speed;
+// keyboard (PC)
+document.addEventListener("keydown",(e)=>{
+    keys[e.code] = true;
+
+    if(e.code === "Space"){
+        shoot();
+    }
+});
+
+document.addEventListener("keyup",(e)=>{
+    keys[e.code] = false;
+});
+
+// mobile buttons
+function press(action){
+
+    if(action === "left") player.x -= player.speed;
+    if(action === "right") player.x += player.speed;
+    if(action === "shoot") shoot();
 }
 
 // =====================
-// SHOOT (IMPROVED ARC)
+// SHOOT
 // =====================
 
 function shoot(){
@@ -134,9 +148,8 @@ function shoot(){
     player.holding = false;
     ball.moving = true;
 
-    // smoother basketball arc
     ball.dx = 10;
-    ball.dy = -14;
+    ball.dy = -13;
 }
 
 // =====================
@@ -173,8 +186,13 @@ function resetBall(){
 
 function updatePlayer(){
 
+    // PC MOVEMENT
+    if(keys["KeyA"] || keys["ArrowLeft"]) player.x -= player.speed;
+    if(keys["KeyD"] || keys["ArrowRight"]) player.x += player.speed;
+
     player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
+    // BALL FOLLOW HAND
     if(player.holding){
         ball.x = player.x + 20;
         ball.y = player.y;
@@ -211,7 +229,7 @@ function updateBall(){
         ball.dx *= -0.8;
     }
 
-    // SCORE (must fall downward)
+    // SCORE
     if(
         ball.x > hoop.x &&
         ball.x < hoop.x + hoop.w &&
@@ -223,7 +241,7 @@ function updateBall(){
         resetBall();
     }
 
-    // out of bounds
+    // OUT OF BOUNDS
     if(ball.x < 0 || ball.x > canvas.width){
         resetBall();
     }
@@ -235,11 +253,9 @@ function updateBall(){
 
 function draw(){
 
-    // background
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // ground
     ctx.fillStyle = "#c27c3e";
     ctx.fillRect(0,500,canvas.width,100);
 
@@ -260,7 +276,7 @@ function draw(){
     ctx.fill();
 
     // hoop
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = "white";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
     ctx.fillStyle = "red";
