@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Movement Fix", layout="wide")
+st.set_page_config(page_title="Basketball Hold Shoot Fix", layout="wide")
 
-st.title("🏀 Basketball Game (Player Movement Fixed)")
+st.title("🏀 Basketball Game (Hold T + Mobile Button Fixed)")
 
 html_code = """
 <!DOCTYPE html>
@@ -19,7 +19,6 @@ canvas {
     display:block;
 }
 
-/* UI */
 #ui {
     position:absolute;
     top:10px;
@@ -30,10 +29,9 @@ canvas {
     border-radius:10px;
 }
 
-/* MOBILE BUTTONS */
 #controls {
     position:absolute;
-    bottom:20px;
+    bottom:15px;
     left:50%;
     transform:translateX(-50%);
     display:flex;
@@ -60,7 +58,7 @@ Power: <span id="power">0</span>
 
 <div id="controls">
 <button id="leftBtn">⬅️ LEFT</button>
-<button id="shootBtn">🏀 SHOOT</button>
+<button id="shootBtn">🏀 HOLD SHOOT</button>
 <button id="rightBtn">➡️ RIGHT</button>
 </div>
 
@@ -77,10 +75,11 @@ const ctx = canvas.getContext("2d");
 
 let score = 0;
 let power = 0;
+
 let charging = false;
 
 // =====================
-// PLAYER (FIXED MOVEMENT)
+// PLAYER
 // =====================
 
 const player = {
@@ -125,32 +124,64 @@ const backboard = {
 };
 
 // =====================
-// INPUT SYSTEM (FIXED)
+// INPUT
 // =====================
 
 let keys = {};
-
-// PC movement
-document.addEventListener("keydown",(e)=>{
-    keys[e.code] = true;
-});
-
-document.addEventListener("keyup",(e)=>{
-    keys[e.code] = false;
-});
-
-// MOBILE movement
 let moveLeft = false;
 let moveRight = false;
 
-document.getElementById("leftBtn").addEventListener("touchstart", ()=> moveLeft = true);
-document.getElementById("leftBtn").addEventListener("touchend", ()=> moveLeft = false);
+// =====================
+// PC MOVEMENT
+// =====================
 
-document.getElementById("rightBtn").addEventListener("touchstart", ()=> moveRight = true);
-document.getElementById("rightBtn").addEventListener("touchend", ()=> moveRight = false);
+document.addEventListener("keydown",(e)=>{
 
-// SHOOT (mobile + PC)
-document.getElementById("shootBtn").addEventListener("touchstart", shoot);
+    keys[e.code] = true;
+
+    if(e.code === "KeyT" && player.holding){
+        charging = true;
+    }
+});
+
+document.addEventListener("keyup",(e)=>{
+
+    keys[e.code] = false;
+
+    if(e.code === "KeyT" && charging){
+        shoot();
+        charging = false;
+        power = 0;
+    }
+});
+
+// =====================
+// MOBILE MOVEMENT
+// =====================
+
+document.getElementById("leftBtn").addEventListener("touchstart",()=> moveLeft = true);
+document.getElementById("leftBtn").addEventListener("touchend",()=> moveLeft = false);
+
+document.getElementById("rightBtn").addEventListener("touchstart",()=> moveRight = true);
+document.getElementById("rightBtn").addEventListener("touchend",()=> moveRight = false);
+
+// =====================
+// MOBILE SHOOT (HOLD)
+// =====================
+
+const shootBtn = document.getElementById("shootBtn");
+
+shootBtn.addEventListener("touchstart", ()=>{
+    if(player.holding) charging = true;
+});
+
+shootBtn.addEventListener("touchend", ()=>{
+    if(charging){
+        shoot();
+        charging = false;
+        power = 0;
+    }
+});
 
 // =====================
 // SHOOT
@@ -166,8 +197,10 @@ function shoot(){
     ball.x = player.x + 20;
     ball.y = player.y;
 
-    ball.dx = 6;
-    ball.dy = -9;
+    let strength = Math.min(power / 25, 1);
+
+    ball.dx = 6 + strength * 5;
+    ball.dy = -9 - strength * 6;
 }
 
 // =====================
@@ -182,23 +215,19 @@ function resetBall(){
 }
 
 // =====================
-// PLAYER UPDATE (FIXED MOVEMENT)
+// PLAYER UPDATE
 // =====================
 
 function updatePlayer(){
 
-    // PC
     if(keys["ArrowLeft"] || keys["KeyA"]) player.x -= player.speed;
     if(keys["ArrowRight"] || keys["KeyD"]) player.x += player.speed;
 
-    // MOBILE
     if(moveLeft) player.x -= player.speed;
     if(moveRight) player.x += player.speed;
 
-    // clamp
     player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
-    // ball follows player
     if(player.holding){
         ball.x = player.x + 20;
         ball.y = player.y;
@@ -206,10 +235,15 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL
+// BALL UPDATE
 // =====================
 
 function updateBall(){
+
+    if(charging){
+        power += 1.3;
+        if(power > 100) power = 100;
+    }
 
     if(!ball.moving) return;
 
@@ -271,7 +305,7 @@ function draw(){
     ctx.fillStyle = "#fff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // rim (single side view)
+    // rim
     ctx.strokeStyle = "red";
     ctx.lineWidth = 5;
     ctx.beginPath();
@@ -290,6 +324,13 @@ function draw(){
         ctx.lineTo(hoop.x + hoop.w/2, hoop.y + 60);
         ctx.stroke();
     }
+
+    // power bar
+    ctx.fillStyle = "black";
+    ctx.fillRect(20,80,100,10);
+
+    ctx.fillStyle = "lime";
+    ctx.fillRect(20,80,power,10);
 }
 
 // =====================
