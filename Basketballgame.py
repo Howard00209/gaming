@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Fix Scoring", layout="wide")
+st.set_page_config(page_title="Basketball Rim Physics Fix", layout="wide")
 
-st.title("🏀 Basketball Game (Correct Hoop Entry + Slower Ball)")
+st.title("🏀 Basketball Game (Real Rim Bounce + Proper Scoring)")
 
 html_code = """
 <!DOCTYPE html>
@@ -77,6 +77,10 @@ let score = 0;
 let power = 0;
 let charging = false;
 
+// =====================
+// PLAYER
+// =====================
+
 const player = {
     x: 120,
     y: 450,
@@ -86,27 +90,28 @@ const player = {
     holding: true
 };
 
+// =====================
+// BALL
+// =====================
+
 const ball = {
     x: 0,
     y: 0,
     r: 12,
     dx: 0,
     dy: 0,
-    gravity: 0.35,   // 🐢 slower fall
+    gravity: 0.35,
     moving: false
 };
 
 // =====================
-// HOOP
+// HOOP (RIM PHYSICS)
 // =====================
 
 const hoop = {
     x: 980,
     y: 240,
-    w: 60,
-    h: 18,
-    rimTop: 240,
-    rimBottom: 255
+    r: 28   // rim radius for collision
 };
 
 const backboard = {
@@ -124,7 +129,6 @@ let keys = {};
 
 // PC
 document.addEventListener("keydown",(e)=>{
-
     keys[e.code] = true;
 
     if(e.code === "KeyT" && player.holding){
@@ -133,7 +137,6 @@ document.addEventListener("keydown",(e)=>{
 });
 
 document.addEventListener("keyup",(e)=>{
-
     keys[e.code] = false;
 
     if(e.code === "KeyT"){
@@ -157,7 +160,7 @@ btn.addEventListener("touchend",()=>{
 });
 
 // =====================
-// SHOOT (SLOWER + LOWER ARC)
+// SHOOT (FIXED)
 // =====================
 
 function shoot(){
@@ -172,8 +175,8 @@ function shoot(){
 
     let strength = Math.min(power / 25, 1);
 
-    ball.dx = 4 + strength * 4;     // 🐢 slower horizontal
-    ball.dy = -7 - strength * 6;    // 🐢 lower arc
+    ball.dx = 5 + strength * 5;
+    ball.dy = -8 - strength * 7;
 }
 
 // =====================
@@ -205,7 +208,7 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL
+// BALL PHYSICS (RIM COLLISION FIX)
 // =====================
 
 function updateBall(){
@@ -226,28 +229,28 @@ function updateBall(){
         resetBall();
     }
 
-    // backboard bounce (still allowed)
-    if(
-        ball.x > backboard.x &&
-        ball.x < backboard.x + backboard.w &&
-        ball.y > backboard.y &&
-        ball.y < backboard.y + backboard.h
-    ){
+    // =====================
+    // 🟥 RIM COLLISION (BOUNCE)
+    // =====================
+
+    let dx = ball.x - hoop.x;
+    let dy = ball.y - hoop.y;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+
+    if(dist < hoop.r + ball.r){
+        // bounce physics
         ball.dx *= -0.7;
+        ball.dy *= -0.6;
     }
 
     // =====================
-    // 🎯 REAL HOOP ENTRY RULE
+    // 🎯 SCORE (must pass through center from above)
     // =====================
 
-    let insideX = ball.x > hoop.x && ball.x < hoop.x + hoop.w;
+    let insideX = ball.x > hoop.x - 20 && ball.x < hoop.x + 20;
+    let falling = ball.dy > 0;
 
-    let enteringFromAbove =
-        ball.y > hoop.rimTop &&
-        ball.y < hoop.rimBottom &&
-        ball.dy > 0; // must be falling
-
-    if(insideX && enteringFromAbove){
+    if(insideX && ball.y > hoop.y && ball.y < hoop.y + 10 && falling){
         score++;
         document.getElementById("score").innerText = score;
         resetBall();
@@ -260,7 +263,6 @@ function updateBall(){
 
 function draw(){
 
-    // background
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -286,13 +288,12 @@ function draw(){
     ctx.fillStyle = "#fff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // rim (side view red)
+    // rim (side view)
     ctx.strokeStyle = "red";
     ctx.lineWidth = 5;
 
     ctx.beginPath();
-    ctx.moveTo(hoop.x, hoop.y);
-    ctx.lineTo(hoop.x + hoop.w, hoop.y);
+    ctx.arc(hoop.x, hoop.y, hoop.r, 0, Math.PI*2);
     ctx.stroke();
 
     // net (visual only)
@@ -300,10 +301,10 @@ function draw(){
     ctx.lineWidth = 1.5;
 
     for(let i=0;i<6;i++){
-        let x = hoop.x + i*10;
+        let x = hoop.x - 15 + i*6;
         ctx.beginPath();
-        ctx.moveTo(x, hoop.y);
-        ctx.lineTo(hoop.x + hoop.w/2, hoop.y + 60);
+        ctx.moveTo(x, hoop.y + 5);
+        ctx.lineTo(hoop.x, hoop.y + 60);
         ctx.stroke();
     }
 
