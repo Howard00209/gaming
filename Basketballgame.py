@@ -1,372 +1,329 @@
 import streamlit as st
-import random
-import time
-import math
+import streamlit.components.v1 as components
 
-# ======================================================
-# PAGE SETUP
-# ======================================================
+# =========================================================
+# PAGE CONFIG
+# =========================================================
 
 st.set_page_config(
-    page_title="🏀 Hardcore Basketball Game",
+    page_title="🏀 Keyboard Basketball",
     page_icon="🏀",
     layout="wide"
 )
 
-# ======================================================
-# CUSTOM CSS + HTML
-# ======================================================
+# =========================================================
+# TITLE
+# =========================================================
 
 st.markdown("""
+# 🏀 Keyboard Basketball Game
+
+### Controls
+- ⬅ LEFT ARROW = Move Left
+- ➡ RIGHT ARROW = Move Right
+- SPACEBAR = Shoot Ball
+
+Try to score in the basket!
+""")
+
+# =========================================================
+# HTML + CSS + JAVASCRIPT GAME
+# =========================================================
+
+game_code = """
+<!DOCTYPE html>
+<html>
+<head>
+
 <style>
 
-html, body, [class*="css"] {
-    background: #07111f;
-    color: white;
-    font-family: 'Trebuchet MS', sans-serif;
-}
-
-.title {
-    text-align: center;
-    font-size: 60px;
-    font-weight: bold;
-    color: orange;
-    text-shadow: 0px 0px 20px red;
-    margin-bottom: 20px;
-}
-
-.scoreboard {
-    background: linear-gradient(90deg,#ff5e00,#ff0000);
-    padding: 20px;
-    border-radius: 20px;
-    text-align: center;
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 25px;
-    box-shadow: 0px 0px 20px rgba(255,100,0,0.6);
-}
-
-.court {
-    background: #c26a00;
-    border: 10px solid white;
-    border-radius: 20px;
-    height: 450px;
-    position: relative;
+body {
+    margin: 0;
     overflow: hidden;
+    background: #07111f;
+    font-family: Arial;
 }
 
-.hoop {
-    position: absolute;
-    top: 80px;
-    right: 80px;
-    font-size: 90px;
+#game {
+    position: relative;
+    width: 100%;
+    height: 650px;
+    background: linear-gradient(to bottom, #0f172a, #111827);
+    overflow: hidden;
+    border-radius: 20px;
+    border: 5px solid white;
 }
 
-.ball {
+/* COURT */
+#court {
     position: absolute;
-    bottom: 50px;
-    left: 60px;
+    bottom: 0;
+    width: 100%;
+    height: 180px;
+    background: #c26a00;
+    border-top: 8px solid white;
+}
+
+/* PLAYER */
+#player {
+    position: absolute;
+    bottom: 140px;
+    left: 120px;
     font-size: 70px;
-    animation: bounce 0.7s infinite;
+    transition: left 0.05s linear;
 }
 
-.defender {
+/* BALL */
+#ball {
     position: absolute;
-    bottom: 60px;
-    left: 45%;
-    font-size: 80px;
-    animation: moveDefender 2s infinite alternate;
-}
-
-@keyframes moveDefender {
-    from { transform: translateX(-100px); }
-    to { transform: translateX(100px); }
-}
-
-@keyframes bounce {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(-25px); }
-    100% { transform: translateY(0px); }
-}
-
-.success {
-    color: lime;
+    bottom: 185px;
+    left: 145px;
     font-size: 40px;
+}
+
+/* HOOP */
+#hoop {
+    position: absolute;
+    right: 120px;
+    top: 160px;
+    font-size: 100px;
+}
+
+/* SCOREBOARD */
+#scoreboard {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    font-size: 35px;
     font-weight: bold;
-    text-align: center;
 }
 
-.fail {
-    color: red;
-    font-size: 40px;
-    font-weight: bold;
-    text-align: center;
+/* POWER BAR */
+#powerContainer {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 250px;
+    height: 30px;
+    border: 3px solid white;
+    background: #222;
 }
 
-.warning {
-    color: yellow;
-    font-size: 25px;
-    text-align: center;
+#powerBar {
+    width: 50%;
+    height: 100%;
+    background: lime;
 }
 
-.energy {
+.instructions {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
     font-size: 22px;
-    color: cyan;
-    text-align: center;
+    text-align: right;
 }
 
 </style>
-""", unsafe_allow_html=True)
+</head>
 
-# ======================================================
-# SESSION STATE
-# ======================================================
+<body>
 
-if "score" not in st.session_state:
-    st.session_state.score = 0
+<div id="game">
 
-if "shots" not in st.session_state:
-    st.session_state.shots = 0
+    <div id="scoreboard">
+        Score: <span id="score">0</span>
+    </div>
 
-if "energy" not in st.session_state:
-    st.session_state.energy = 100
+    <div class="instructions">
+        ⬅ ➡ Move<br>
+        SPACE = Shoot
+    </div>
 
-if "combo" not in st.session_state:
-    st.session_state.combo = 0
+    <div id="hoop">🧺</div>
 
-if "level" not in st.session_state:
-    st.session_state.level = 1
+    <div id="player">⛹️</div>
 
-# ======================================================
-# TITLE
-# ======================================================
+    <div id="ball">🏀</div>
 
-st.markdown('<div class="title">🏀 HARDCORE BASKETBALL</div>', unsafe_allow_html=True)
+    <div id="court"></div>
 
-# ======================================================
-# SCOREBOARD
-# ======================================================
+    <div id="powerContainer">
+        <div id="powerBar"></div>
+    </div>
 
-st.markdown(f"""
-<div class="scoreboard">
-Score: {st.session_state.score} &nbsp;&nbsp;&nbsp;
-Shots: {st.session_state.shots} &nbsp;&nbsp;&nbsp;
-Combo: {st.session_state.combo} 🔥 &nbsp;&nbsp;&nbsp;
-Level: {st.session_state.level}
 </div>
-""", unsafe_allow_html=True)
 
-st.markdown(f"""
-<div class="energy">
-⚡ Energy: {st.session_state.energy}/100
-</div>
-""", unsafe_allow_html=True)
+<script>
 
-# ======================================================
-# BASKETBALL COURT
-# ======================================================
+let player = document.getElementById("player");
+let ball = document.getElementById("ball");
+let scoreText = document.getElementById("score");
+let powerBar = document.getElementById("powerBar");
 
-st.markdown("""
-<div class="court">
-    <div class="hoop">🧺</div>
-    <div class="defender">🧍</div>
-    <div class="ball">🏀</div>
-</div>
-""", unsafe_allow_html=True)
+let playerX = 120;
 
-st.write("")
-st.write("## 🎮 Precision Shooting Controls")
+let score = 0;
 
-# ======================================================
-# GAME CONTROLS
-# ======================================================
+let shooting = false;
 
-col1, col2 = st.columns(2)
+let power = 50;
+let powerDirection = 1;
 
-with col1:
-    power = st.slider("💪 Shot Power", 0, 100, 50)
+/* =========================================
+   POWER BAR ANIMATION
+========================================= */
 
-with col2:
-    angle = st.slider("📐 Shot Angle", 0, 90, 45)
+setInterval(() => {
 
-curve = st.slider("🌀 Curve Control", -50, 50, 0)
+    power += powerDirection * 2;
 
-# ======================================================
-# DIFFICULTY SYSTEM
-# ======================================================
+    if(power >= 100){
+        powerDirection = -1;
+    }
 
-ideal_power = random.randint(45, 75)
-ideal_angle = random.randint(35, 60)
-ideal_curve = random.randint(-15, 15)
+    if(power <= 10){
+        powerDirection = 1;
+    }
 
-# Accuracy calculations
-power_diff = abs(power - ideal_power)
-angle_diff = abs(angle - ideal_angle)
-curve_diff = abs(curve - ideal_curve)
+    powerBar.style.width = power + "%";
 
-accuracy = 100 - (
-    power_diff * 0.9 +
-    angle_diff * 1.2 +
-    curve_diff * 0.5
-)
+    if(power > 70){
+        powerBar.style.background = "red";
+    }
+    else if(power > 40){
+        powerBar.style.background = "orange";
+    }
+    else{
+        powerBar.style.background = "lime";
+    }
 
-# Make higher levels harder
-accuracy -= (st.session_state.level * 5)
+}, 30);
 
-# Clamp accuracy
-accuracy = max(0, min(100, accuracy))
+/* =========================================
+   KEYBOARD CONTROLS
+========================================= */
 
-# ======================================================
-# SHOOT BUTTON
-# ======================================================
+document.addEventListener("keydown", function(event){
 
-if st.button("🏀 SHOOT BALL", use_container_width=True):
+    // LEFT
+    if(event.key === "ArrowLeft"){
 
-    if st.session_state.energy <= 0:
-        st.error("💀 You are too exhausted to shoot!")
-        st.stop()
+        playerX -= 25;
 
-    st.session_state.shots += 1
-    st.session_state.energy -= 5
+        if(playerX < 0){
+            playerX = 0;
+        }
 
-    with st.spinner("Ball in the air..."):
-        time.sleep(2)
+        player.style.left = playerX + "px";
 
-    randomness = random.randint(-15, 15)
-    final_score = accuracy + randomness
+        if(!shooting){
+            ball.style.left = (playerX + 25) + "px";
+        }
+    }
 
-    if final_score > 75:
+    // RIGHT
+    if(event.key === "ArrowRight"){
 
-        combo_bonus = st.session_state.combo * 2
-        earned = 2 + combo_bonus
+        playerX += 25;
 
-        st.session_state.score += earned
-        st.session_state.combo += 1
+        if(playerX > window.innerWidth - 300){
+            playerX = window.innerWidth - 300;
+        }
 
-        st.markdown(
-            f'<div class="success">🔥 SWISH! +{earned} points!</div>',
-            unsafe_allow_html=True
-        )
+        player.style.left = playerX + "px";
 
-        st.balloons()
+        if(!shooting){
+            ball.style.left = (playerX + 25) + "px";
+        }
+    }
 
-    elif final_score > 55:
+    // SHOOT
+    if(event.code === "Space" && !shooting){
 
-        st.session_state.score += 1
-        st.session_state.combo = 0
+        shootBall();
+    }
 
-        st.markdown(
-            '<div class="warning">😮 Rim Shot! Only 1 point.</div>',
-            unsafe_allow_html=True
-        )
+});
 
-    else:
+/* =========================================
+   SHOOT FUNCTION
+========================================= */
 
-        st.session_state.combo = 0
+function shootBall(){
 
-        st.markdown(
-            '<div class="fail">❌ BLOCKED BY DEFENDER!</div>',
-            unsafe_allow_html=True
-        )
+    shooting = true;
 
-    # Level Up System
-    if st.session_state.score >= st.session_state.level * 10:
-        st.session_state.level += 1
+    let ballX = playerX + 25;
+    let ballY = 185;
 
-        st.success(f"🚀 LEVEL UP! Welcome to Level {st.session_state.level}")
+    let velocityX = 10 + (power / 10);
+    let velocityY = 18 + (power / 6);
 
-# ======================================================
-# REST BUTTON
-# ======================================================
+    let gravity = 0.6;
 
-if st.button("😴 Rest (+20 Energy)"):
+    let hoopX = window.innerWidth - 240;
+    let hoopY = 170;
 
-    st.session_state.energy = min(
-        100,
-        st.session_state.energy + 20
-    )
+    let interval = setInterval(() => {
 
-# ======================================================
-# RESET GAME
-# ======================================================
+        ballX += velocityX;
+        ballY += velocityY;
 
-if st.button("🔄 FULL RESET"):
+        velocityY -= gravity;
 
-    st.session_state.score = 0
-    st.session_state.shots = 0
-    st.session_state.energy = 100
-    st.session_state.combo = 0
-    st.session_state.level = 1
+        ball.style.left = ballX + "px";
+        ball.style.bottom = ballY + "px";
 
-    st.rerun()
+        // SCORE DETECTION
+        if(
+            ballX > hoopX &&
+            ballX < hoopX + 90 &&
+            ballY > hoopY &&
+            ballY < hoopY + 60
+        ){
 
-# ======================================================
-# STATS PANEL
-# ======================================================
+            score++;
 
-with st.expander("📊 Advanced Stats"):
+            scoreText.innerText = score;
 
-    shooting_percent = 0
+            clearInterval(interval);
 
-    if st.session_state.shots > 0:
-        shooting_percent = round(
-            (st.session_state.score / (st.session_state.shots * 2)) * 100,
-            1
-        )
+            resetBall();
+        }
 
-    st.write(f"🎯 Shooting Efficiency: {shooting_percent}%")
-    st.write(f"🔥 Current Combo Streak: {st.session_state.combo}")
-    st.write(f"⚡ Remaining Energy: {st.session_state.energy}")
-    st.write(f"🏆 Current Difficulty Level: {st.session_state.level}")
+        // MISS
+        if(ballY < 0 || ballX > window.innerWidth){
 
-# ======================================================
-# GAME RULES
-# ======================================================
+            clearInterval(interval);
 
-with st.expander("📖 Hardcore Rules"):
+            resetBall();
+        }
 
-    st.write("""
-    ### Welcome to Hardcore Basketball
+    }, 20);
+}
 
-    This is NOT easy.
+/* =========================================
+   RESET BALL
+========================================= */
 
-    You must:
-    - Control shot power
-    - Aim the angle correctly
-    - Add proper curve
-    - Beat the defender
-    - Manage energy
-    - Build combo streaks
+function resetBall(){
 
-    ### Difficulty Features
-    - Random hidden target values
-    - Defender blocks shots
-    - Accuracy penalties
-    - Increasing level difficulty
-    - Energy exhaustion
-    - Random shot physics
+    shooting = false;
 
-    ### Tips
-    - Medium power works best
-    - Angles around 45° are safer
-    - Extreme curve is risky
-    - Higher combos give bonus points
-    """)
+    ball.style.bottom = "185px";
+    ball.style.left = (playerX + 25) + "px";
+}
 
-# ======================================================
-# FOOTER
-# ======================================================
+</script>
 
-st.markdown("""
-<hr>
+</body>
+</html>
+"""
 
-<center>
-<h2 style='color:orange'>
-🏀 Built with Streamlit + HTML + CSS
-</h2>
+# =========================================================
+# DISPLAY GAME
+# =========================================================
 
-<h4 style='color:gray'>
-Can you survive Level 10?
-</h4>
-</center>
-""", unsafe_allow_html=True)
+components.html(game_code, height=700, scrolling=False)
