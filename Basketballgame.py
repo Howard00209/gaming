@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Rim Physics Fix", layout="wide")
+st.set_page_config(page_title="Side View Basketball Physics", layout="wide")
 
-st.title("🏀 Basketball Game (Real Rim Bounce + Proper Scoring)")
+st.title("🏀 Basketball Game (Side View Hoop + Backboard Bounce Fixed)")
 
 html_code = """
 <!DOCTYPE html>
@@ -105,20 +105,22 @@ const ball = {
 };
 
 // =====================
-// HOOP (RIM PHYSICS)
+// SIDE VIEW HOOP (REALISTIC STRUCTURE)
 // =====================
 
 const hoop = {
     x: 980,
-    y: 240,
-    r: 28   // rim radius for collision
+    y: 250,
+    width: 60,
+    height: 12
 };
 
+// backboard = SOLID WALL
 const backboard = {
     x: 1045,
     y: 150,
     w: 12,
-    h: 150
+    h: 160
 };
 
 // =====================
@@ -160,7 +162,7 @@ btn.addEventListener("touchend",()=>{
 });
 
 // =====================
-// SHOOT (FIXED)
+// SHOOT
 // =====================
 
 function shoot(){
@@ -208,7 +210,7 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL PHYSICS (RIM COLLISION FIX)
+// BALL PHYSICS (FIXED COLLISIONS)
 // =====================
 
 function updateBall(){
@@ -225,32 +227,57 @@ function updateBall(){
 
     ball.dy += ball.gravity;
 
+    // floor
     if(ball.y > canvas.height - 20){
         resetBall();
     }
 
     // =====================
-    // 🟥 RIM COLLISION (BOUNCE)
+    // 🧱 BACKBOARD COLLISION (REAL BOUNCE)
     // =====================
 
-    let dx = ball.x - hoop.x;
-    let dy = ball.y - hoop.y;
-    let dist = Math.sqrt(dx*dx + dy*dy);
-
-    if(dist < hoop.r + ball.r){
-        // bounce physics
-        ball.dx *= -0.7;
-        ball.dy *= -0.6;
+    if(
+        ball.x + ball.r > backboard.x &&
+        ball.x - ball.r < backboard.x + backboard.w &&
+        ball.y + ball.r > backboard.y &&
+        ball.y - ball.r < backboard.y + backboard.h
+    ){
+        ball.dx *= -0.8;  // bounce off wall
     }
 
     // =====================
-    // 🎯 SCORE (must pass through center from above)
+    // 🔴 SIDE VIEW RIM COLLISION
     // =====================
 
-    let insideX = ball.x > hoop.x - 20 && ball.x < hoop.x + 20;
+    let rimLeft = hoop.x;
+    let rimRight = hoop.x + hoop.width;
+    let rimTop = hoop.y;
+    let rimBottom = hoop.y + hoop.height;
+
+    // hit rim = bounce
+    if(
+        ball.x > rimLeft - ball.r &&
+        ball.x < rimRight + ball.r &&
+        ball.y > rimTop - ball.r &&
+        ball.y < rimBottom + ball.r
+    ){
+        ball.dy *= -0.6;
+        ball.dx *= -0.5;
+    }
+
+    // =====================
+    // 🎯 SCORE (must drop through opening)
+    // =====================
+
+    let insideX = ball.x > rimLeft && ball.x < rimRight;
     let falling = ball.dy > 0;
 
-    if(insideX && ball.y > hoop.y && ball.y < hoop.y + 10 && falling){
+    if(
+        insideX &&
+        ball.y > rimTop &&
+        ball.y < rimBottom + 10 &&
+        falling
+    ){
         score++;
         document.getElementById("score").innerText = score;
         resetBall();
@@ -258,7 +285,7 @@ function updateBall(){
 }
 
 // =====================
-// DRAW
+// DRAW (SIDE VIEW HOOP)
 // =====================
 
 function draw(){
@@ -288,12 +315,19 @@ function draw(){
     ctx.fillStyle = "#fff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // rim (side view)
+    // rim (SIDE VIEW LINE)
     ctx.strokeStyle = "red";
     ctx.lineWidth = 5;
 
     ctx.beginPath();
-    ctx.arc(hoop.x, hoop.y, hoop.r, 0, Math.PI*2);
+    ctx.moveTo(hoop.x, hoop.y);
+    ctx.lineTo(hoop.x + hoop.width, hoop.y);
+    ctx.stroke();
+
+    // front rim edge
+    ctx.beginPath();
+    ctx.moveTo(hoop.x, hoop.y + hoop.height);
+    ctx.lineTo(hoop.x + hoop.width, hoop.y + hoop.height);
     ctx.stroke();
 
     // net (visual only)
@@ -301,10 +335,10 @@ function draw(){
     ctx.lineWidth = 1.5;
 
     for(let i=0;i<6;i++){
-        let x = hoop.x - 15 + i*6;
+        let x = hoop.x + i*10;
         ctx.beginPath();
-        ctx.moveTo(x, hoop.y + 5);
-        ctx.lineTo(hoop.x, hoop.y + 60);
+        ctx.moveTo(x, hoop.y);
+        ctx.lineTo(hoop.x + hoop.width/2, hoop.y + 60);
         ctx.stroke();
     }
 
