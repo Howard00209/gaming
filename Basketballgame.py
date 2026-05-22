@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="3D Basketball Pro", layout="wide")
 
-st.title("🏀 3D Basketball Pro (WASD + 3PT 3D Line + Hands)")
+st.title("🏀 3D Basketball Pro (Rotations Added)")
 
 html_code = """
 <!DOCTYPE html>
@@ -29,33 +29,12 @@ body {
     background: rgba(0,0,0,0.5);
     border-radius: 10px;
 }
-
-#controls {
-    position: absolute;
-    bottom: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-button {
-    font-size: 18px;
-    padding: 12px;
-    margin: 4px;
-    border-radius: 10px;
-}
 </style>
 </head>
 
 <body>
 
 <div id="ui">Score: <span id="score">0</span></div>
-
-<div id="controls">
-<button onclick="left()">A</button>
-<button onclick="right()">D</button>
-<button onclick="jump()">SPACE</button>
-<button onclick="shoot()">SHOOT</button>
-</div>
 
 <script>
 
@@ -90,7 +69,7 @@ floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
 // =========================
-// PLAYER (WITH HANDS)
+// PLAYER
 // =========================
 
 const body = new THREE.Mesh(
@@ -106,19 +85,6 @@ const head = new THREE.Mesh(
     new THREE.MeshStandardMaterial({color:0xffd39b})
 );
 scene.add(head);
-
-// HANDS (NEW)
-const leftHand = new THREE.Mesh(
-    new THREE.BoxGeometry(0.25,0.25,0.25),
-    new THREE.MeshStandardMaterial({color:0xffd39b})
-);
-scene.add(leftHand);
-
-const rightHand = new THREE.Mesh(
-    new THREE.BoxGeometry(0.25,0.25,0.25),
-    new THREE.MeshStandardMaterial({color:0xffd39b})
-);
-scene.add(rightHand);
 
 // =========================
 // BALL
@@ -153,78 +119,81 @@ rim.rotation.x = Math.PI/2;
 scene.add(rim);
 
 // =========================
-// 3-POINT LINE (3D ARC AROUND HOOP)
+// 3-POINT LINE (ROTATED 3D ARC)
 // =========================
 
 const curve = new THREE.EllipseCurve(
-    14, 0,
+    0, 0,
     10, 7,
     0, Math.PI,
     false,
     0
 );
 
-const points = curve.getPoints(60);
-const geometry = new THREE.BufferGeometry().setFromPoints(points);
+const points = curve.getPoints(80);
 
-const line = new THREE.Line(
-    geometry,
+const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+
+const threePointLine = new THREE.Line(
+    lineGeo,
     new THREE.LineBasicMaterial({color:0xffffff})
 );
 
-line.rotation.x = -Math.PI/2;
-scene.add(line);
+// MOVE + ROTATE INTO COURT SPACE (IMPORTANT FIX)
+threePointLine.position.set(5,0,0);
+threePointLine.rotation.x = -Math.PI/2;
+threePointLine.rotation.z = Math.PI/8;
+
+scene.add(threePointLine);
 
 // =========================
 // INPUT
 // =========================
 
 let keys = {};
+let facing = 1; // NEW: player direction
 
 document.addEventListener("keydown",(e)=>{
     keys[e.code] = true;
-
-    if(e.code === "Space") jump();
 });
 
 document.addEventListener("keyup",(e)=>{
     keys[e.code] = false;
 });
 
-// MOBILE
-function left(){ body.position.x -= 0.6; }
-function right(){ body.position.x += 0.6; }
-
-function jump(){
-    if(body.position.y <= 1){
-        body.position.y = 3;
-    }
-}
-
-// SHOOT
-function shoot(){
-    if(!holding) return;
-
-    holding = false;
-
-    ballVel.x = 0.3;
-    ballVel.y = 0.4;
-    ballVel.z = 0;
-}
-
 // =========================
-// UPDATE PLAYER
+// UPDATE PLAYER (ROTATION FIXED)
 // =========================
 
 function updatePlayer(){
 
-    // WASD MOVEMENT (REQUESTED)
-    if(keys["KeyA"] || keys["KeyD"]){
-        body.position.x += keys["KeyA"] ? -0.2 : 0.2;
+    let moved = false;
+
+    if(keys["KeyA"]){
+        body.position.x -= 0.2;
+        facing = -1;
+        moved = true;
     }
 
-    if(keys["KeyW"] || keys["KeyS"]){
-        body.position.z += keys["KeyW"] ? -0.2 : 0.2;
+    if(keys["KeyD"]){
+        body.position.x += 0.2;
+        facing = 1;
+        moved = true;
+    }
+
+    if(keys["KeyW"]){
+        body.position.z -= 0.2;
+        moved = true;
+    }
+
+    if(keys["KeyS"]){
+        body.position.z += 0.2;
+        moved = true;
+    }
+
+    // ROTATE PLAYER TOWARD MOVEMENT
+    if(moved){
+        body.rotation.y = facing === 1 ? 0 : Math.PI;
     }
 
     // HEAD FOLLOW
@@ -234,23 +203,10 @@ function updatePlayer(){
         body.position.z
     );
 
-    // HAND POSITIONS (NEW)
-    leftHand.position.set(
-        body.position.x - 0.5,
-        body.position.y + 0.8,
-        body.position.z
-    );
-
-    rightHand.position.set(
-        body.position.x + 0.5,
-        body.position.y + 0.8,
-        body.position.z
-    );
-
-    // HOLD BALL IN HANDS
+    // BALL IN HANDS
     if(holding){
         ball.position.set(
-            body.position.x + 0.6,
+            body.position.x + (0.6 * facing),
             body.position.y + 1.1,
             body.position.z
         );
@@ -258,8 +214,10 @@ function updatePlayer(){
 }
 
 // =========================
-// BALL UPDATE
+// BALL
 // =========================
+
+let score = 0;
 
 function updateBall(){
 
@@ -271,27 +229,16 @@ function updateBall(){
 
     ballVel.y -= 0.015;
 
-    // floor
     if(ball.position.y < 0.3){
         ball.position.y = 0.3;
         ballVel.y *= -0.5;
     }
 
-    // backboard
-    if(ball.position.x > 14.5 &&
-       ball.position.y < 7 &&
-       ball.position.y > 3){
-        ballVel.x *= -0.8;
-    }
-
-    // SCORE
+    // SCORE CHECK
     let dx = ball.position.x - 14;
     let dy = ball.position.y - 5;
-    let dz = ball.position.z;
 
-    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
-
-    if(dist < 0.7 && ballVel.y < 0){
+    if(Math.sqrt(dx*dx + dy*dy) < 0.7 && ballVel.y < 0){
 
         score++;
         document.getElementById("score").innerText = score;
@@ -304,12 +251,25 @@ function updateBall(){
     }
 }
 
-let score = 0;
-
 function resetBall(){
     holding = true;
     ballVel = {x:0,y:0,z:0};
 }
+
+// =========================
+// SHOOT
+// =========================
+
+document.addEventListener("keydown",(e)=>{
+    if(e.code === "Space" && holding){
+
+        holding = false;
+
+        ballVel.x = 0.3 * facing;
+        ballVel.y = 0.4;
+        ballVel.z = 0;
+    }
+});
 
 // =========================
 // LOOP
@@ -326,7 +286,7 @@ function animate(){
 
 animate();
 
-// resize
+// RESIZE
 window.addEventListener("resize",()=>{
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
