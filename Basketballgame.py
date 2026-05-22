@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Game", layout="wide")
+st.set_page_config(page_title="Ultimate Basketball Game", layout="wide")
 
-st.title("🏀 Advanced Basketball Game")
+st.title("🏀 Ultimate Basketball Game")
 
 html_code = """
 <!DOCTYPE html>
@@ -14,15 +14,18 @@ html_code = """
 body{
     margin:0;
     overflow:hidden;
-    background:#87CEEB;
+    background:#0f172a;
+    font-family:Arial;
 }
 
 canvas{
     display:block;
     margin:auto;
-    background:linear-gradient(#87CEEB,#E0F7FA);
-    border:6px solid black;
-    border-radius:12px;
+    margin-top:10px;
+    border-radius:18px;
+    border:5px solid #1e293b;
+    box-shadow:0 0 30px rgba(0,0,0,0.5);
+    background:linear-gradient(#60a5fa,#dbeafe);
 }
 
 </style>
@@ -30,7 +33,7 @@ canvas{
 
 <body>
 
-<canvas id="gameCanvas" width="1300" height="720"></canvas>
+<canvas id="gameCanvas" width="1400" height="760"></canvas>
 
 <script>
 
@@ -44,13 +47,15 @@ const ctx = canvas.getContext("2d");
 let score = 0;
 let highScore = 0;
 
+let particles = [];
+
 // ========================================
 // PLAYER
 // ========================================
 
 const player = {
     x: 120,
-    y: 520,
+    y: 560,
     width: 60,
     height: 100,
     speed: 7,
@@ -69,7 +74,7 @@ const ball = {
     radius: 16,
     dx: 0,
     dy: 0,
-    gravity: 0.45,
+    gravity: 0.42,
     shooting: false,
     trail:[]
 };
@@ -79,9 +84,9 @@ const ball = {
 // ========================================
 
 const hoop = {
-    x: 980,
-    y: 220,
-    width: 90,
+    x: 1180,
+    y: 250,
+    width: 95,
     height: 12
 };
 
@@ -98,7 +103,7 @@ document.addEventListener("keydown",(e)=>{
     // JUMP
     if(e.code === "Space" && !player.jumping){
 
-        player.velY = -16;
+        player.velY = -17;
         player.jumping = true;
     }
 
@@ -116,28 +121,93 @@ let charging = false;
 let shootPower = 0;
 
 // ========================================
+// PARTICLES
+// ========================================
+
+function createParticles(x,y){
+
+    for(let i=0;i<40;i++){
+
+        particles.push({
+
+            x:x,
+            y:y,
+
+            dx:(Math.random()-0.5)*8,
+            dy:(Math.random()-0.5)*8,
+
+            size:Math.random()*8 + 2,
+
+            life:100
+        });
+    }
+}
+
+function updateParticles(){
+
+    for(let i=particles.length-1;i>=0;i--){
+
+        let p = particles[i];
+
+        p.x += p.dx;
+        p.y += p.dy;
+
+        p.life--;
+
+        if(p.life <= 0){
+            particles.splice(i,1);
+        }
+    }
+}
+
+function drawParticles(){
+
+    for(let p of particles){
+
+        ctx.beginPath();
+
+        ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+
+        ctx.fillStyle = "gold";
+
+        ctx.fill();
+    }
+}
+
+// ========================================
 // DRAW PLAYER
 // ========================================
 
 function drawPlayer(){
 
+    // Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.beginPath();
+    ctx.ellipse(player.x+30,675,35,10,0,0,Math.PI*2);
+    ctx.fill();
+
     // Legs
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 6;
 
     ctx.beginPath();
     ctx.moveTo(player.x+15,player.y+100);
-    ctx.lineTo(player.x+10,player.y+135);
+    ctx.lineTo(player.x+10,player.y+140);
     ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(player.x+45,player.y+100);
-    ctx.lineTo(player.x+50,player.y+135);
+    ctx.lineTo(player.x+50,player.y+140);
     ctx.stroke();
 
-    // Body
-    ctx.fillStyle = "#1565C0";
+    // Jersey
+    ctx.fillStyle = "#2563eb";
     ctx.fillRect(player.x,player.y,player.width,100);
+
+    // Jersey Number
+    ctx.fillStyle = "white";
+    ctx.font = "30px Arial";
+    ctx.fillText("23",player.x+13,player.y+60);
 
     // Head
     ctx.beginPath();
@@ -151,7 +221,7 @@ function drawPlayer(){
 
     ctx.beginPath();
     ctx.moveTo(player.x+60,player.y+25);
-    ctx.lineTo(player.x+80,player.y+15);
+    ctx.lineTo(player.x+82,player.y+15);
     ctx.stroke();
 }
 
@@ -167,11 +237,15 @@ function drawBall(){
         let t = ball.trail[i];
 
         ctx.beginPath();
+
         ctx.arc(t.x,t.y,ball.radius-5,0,Math.PI*2);
+
         ctx.fillStyle = "rgba(255,140,0,0.2)";
+
         ctx.fill();
     }
 
+    // Ball
     ctx.beginPath();
 
     ctx.arc(ball.x,ball.y,ball.radius,0,Math.PI*2);
@@ -185,13 +259,14 @@ function drawBall(){
         20
     );
 
-    gradient.addColorStop(0,"#FFD54F");
-    gradient.addColorStop(1,"#F57C00");
+    gradient.addColorStop(0,"#fde68a");
+    gradient.addColorStop(1,"#ea580c");
 
     ctx.fillStyle = gradient;
     ctx.fill();
 
-    ctx.strokeStyle = "black";
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 2;
     ctx.stroke();
 }
 
@@ -202,24 +277,37 @@ function drawBall(){
 function drawCourt(){
 
     // Floor
-    ctx.fillStyle = "#C97B30";
-    ctx.fillRect(0,640,canvas.width,80);
+    ctx.fillStyle = "#c2410c";
+    ctx.fillRect(0,680,canvas.width,80);
 
-    // Court lines
+    // Wood details
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 2;
+
+    for(let i=0;i<canvas.width;i+=80){
+
+        ctx.beginPath();
+        ctx.moveTo(i,680);
+        ctx.lineTo(i,760);
+        ctx.stroke();
+    }
+
+    // Three point arc
     ctx.strokeStyle = "white";
     ctx.lineWidth = 4;
 
     ctx.beginPath();
-    ctx.arc(300,640,120,Math.PI,0);
+    ctx.arc(350,680,160,Math.PI,0);
     ctx.stroke();
 
-    // Hoop pole
-    ctx.fillStyle = "black";
-    ctx.fillRect(1120,150,12,260);
+    // Hoop stand fixed to wall
+    ctx.fillStyle = "#111";
+
+    ctx.fillRect(1320,100,18,350);
 
     // Backboard
     ctx.fillStyle = "white";
-    ctx.fillRect(1080,180,12,120);
+    ctx.fillRect(1260,180,16,130);
 
     // Rim
     ctx.fillStyle = "red";
@@ -231,8 +319,10 @@ function drawCourt(){
     for(let i=0;i<8;i++){
 
         ctx.beginPath();
-        ctx.moveTo(hoop.x + i*11, hoop.y+12);
-        ctx.lineTo(hoop.x + 10 + i*8, hoop.y+45);
+
+        ctx.moveTo(hoop.x + i*12, hoop.y+12);
+        ctx.lineTo(hoop.x + 10 + i*9, hoop.y+50);
+
         ctx.stroke();
     }
 }
@@ -243,29 +333,46 @@ function drawCourt(){
 
 function drawUI(){
 
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
-    ctx.fillRect(20,20,340,220);
+    // Glass panel
+    ctx.fillStyle = "rgba(15,23,42,0.75)";
+    ctx.fillRect(25,25,360,220);
 
+    // Outline
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.strokeRect(25,25,360,220);
+
+    // Title
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = "bold 34px Arial";
+    ctx.fillText("SCOREBOARD",50,70);
+
+    // Score
+    ctx.fillStyle = "#22c55e";
+    ctx.font = "bold 50px Arial";
+    ctx.fillText(score,60,140);
+
+    // High score
+    ctx.fillStyle = "#facc15";
+    ctx.font = "28px Arial";
+    ctx.fillText("High Score: " + highScore,60,190);
+
+    // Controls
     ctx.fillStyle = "white";
-    ctx.font = "32px Arial";
+    ctx.font = "20px Arial";
 
-    ctx.fillText("Score: " + score,40,70);
-    ctx.fillText("High Score: " + highScore,40,120);
-
-    ctx.font = "22px Arial";
-    ctx.fillText("Move: A / D",40,170);
-    ctx.fillText("Jump: SPACE",40,205);
-    ctx.fillText("Hold T to Shoot",40,240);
+    ctx.fillText("A / D → Move",1020,50);
+    ctx.fillText("SPACE → Jump",1020,80);
+    ctx.fillText("Hold T → Shoot",1020,110);
 
     // Power bar
     if(charging){
 
-        ctx.fillStyle = "lime";
+        ctx.fillStyle = "#22c55e";
 
-        ctx.fillRect(20,270,shootPower*12,24);
+        ctx.fillRect(50,215,shootPower*10,22);
 
         ctx.strokeStyle = "white";
-        ctx.strokeRect(20,270,240,24);
+        ctx.strokeRect(50,215,260,22);
     }
 }
 
@@ -288,9 +395,9 @@ function updatePlayer(){
     player.velY += 0.8;
 
     // Ground collision
-    if(player.y >= 520){
+    if(player.y >= 560){
 
-        player.y = 520;
+        player.y = 560;
         player.velY = 0;
         player.jumping = false;
     }
@@ -302,31 +409,33 @@ function updatePlayer(){
         player.x = canvas.width - player.width;
     }
 
-    // Holding ball
+    // Hold ball
     if(player.holdingBall){
 
         ball.x = player.x + 75;
-        ball.y = player.y + 30;
+        ball.y = player.y + 25;
     }
 
-    // SHOOT CHARGE
+    // Charge shot
     if(keys["KeyT"] && player.holdingBall){
 
         charging = true;
 
-        if(shootPower < 26){
-            shootPower += 0.3;
+        if(shootPower < 30){
+            shootPower += 0.4;
         }
     }
 
-    // RELEASE SHOT
+    // Release shot
     if(!keys["KeyT"] && charging && player.holdingBall){
 
         player.holdingBall = false;
+
         ball.shooting = true;
 
-        ball.dx = shootPower * 0.8;
-        ball.dy = -shootPower;
+        // HIGHER ARC
+        ball.dx = shootPower * 0.65;
+        ball.dy = -shootPower * 1.4;
 
         charging = false;
         shootPower = 0;
@@ -337,6 +446,8 @@ function updatePlayer(){
 // BALL UPDATE
 // ========================================
 
+let alreadyScored = false;
+
 function updateBall(){
 
     if(ball.shooting){
@@ -346,20 +457,20 @@ function updateBall(){
 
         ball.dy += ball.gravity;
 
-        // Trail effect
+        // Trail
         ball.trail.push({
             x:ball.x,
             y:ball.y
         });
 
-        if(ball.trail.length > 10){
+        if(ball.trail.length > 12){
             ball.trail.shift();
         }
 
         // Floor bounce
-        if(ball.y + ball.radius > 640){
+        if(ball.y + ball.radius > 680){
 
-            ball.y = 640 - ball.radius;
+            ball.y = 680 - ball.radius;
             ball.dy *= -0.72;
         }
 
@@ -373,22 +484,33 @@ function updateBall(){
         // Friction
         ball.dx *= 0.995;
 
-        // SCORE
+        // SCORE DETECTION
         if(
             ball.x > hoop.x &&
             ball.x < hoop.x + hoop.width &&
             ball.y > hoop.y &&
-            ball.y < hoop.y + 25
+            ball.y < hoop.y + 30 &&
+            !alreadyScored
         ){
+
+            alreadyScored = true;
 
             score += 2;
 
             if(score > highScore){
                 highScore = score;
             }
+
+            // SCORE ANIMATION
+            createParticles(ball.x,ball.y);
         }
 
-        // PICKUP BALL
+        // Reset score flag
+        if(ball.y > hoop.y + 120){
+            alreadyScored = false;
+        }
+
+        // Pickup ball
         let distX = ball.x - (player.x + 30);
         let distY = ball.y - (player.y + 50);
 
@@ -402,6 +524,7 @@ function updateBall(){
 
             ball.dx = 0;
             ball.dy = 0;
+
             ball.trail = [];
         }
     }
@@ -420,8 +543,12 @@ function gameLoop(){
     updatePlayer();
     updateBall();
 
+    updateParticles();
+
     drawPlayer();
     drawBall();
+
+    drawParticles();
 
     drawUI();
 
@@ -436,4 +563,4 @@ gameLoop();
 </html>
 """
 
-components.html(html_code, height=740)
+components.html(html_code, height=780)
