@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Perspective Fix", layout="wide")
+st.set_page_config(page_title="Basketball Fixed Shoot", layout="wide")
 
-st.title("🏀 Basketball Game (Normal Perspective Hoop Fixed)")
+st.title("🏀 Basketball Game (Shoot Bug FIXED)")
 
 html_code = """
 <!DOCTYPE html>
@@ -70,20 +70,30 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 // =====================
-// STATE
+// GAME STATES (FIXED)
 // =====================
+
+const STATE = {
+    IDLE: 0,
+    CHARGING: 1,
+    SHOOTING: 2
+};
+
+let gameState = STATE.IDLE;
 
 let score = 0;
 let power = 0;
-let charging = false;
+
+// =====================
+// PLAYER / BALL
+// =====================
 
 const player = {
     x: 120,
     y: 450,
     w: 40,
     h: 80,
-    speed: 6,
-    holding: true
+    speed: 6
 };
 
 const ball = {
@@ -93,18 +103,19 @@ const ball = {
     dx: 0,
     dy: 0,
     gravity: 0.45,
-    moving: false
+    moving: false,
+    holding: true
 };
 
 // =====================
-// HOOP (SIDE PERSPECTIVE FIX)
+// HOOP (clean + correct perspective)
 // =====================
 
 const hoop = {
     x: 980,
     y: 240,
-    width: 60,
-    height: 18
+    w: 60,
+    h: 18
 };
 
 const backboard = {
@@ -120,12 +131,13 @@ const backboard = {
 
 let keys = {};
 
+// PC
 document.addEventListener("keydown",(e)=>{
 
     keys[e.code] = true;
 
-    if(e.code === "KeyT" && player.holding){
-        charging = true;
+    if(e.code === "KeyT" && gameState === STATE.IDLE && ball.holding){
+        gameState = STATE.CHARGING;
     }
 });
 
@@ -133,10 +145,8 @@ document.addEventListener("keyup",(e)=>{
 
     keys[e.code] = false;
 
-    if(e.code === "KeyT"){
-        if(charging) shoot();
-        charging = false;
-        power = 0;
+    if(e.code === "KeyT" && gameState === STATE.CHARGING){
+        shoot();
     }
 });
 
@@ -144,24 +154,26 @@ document.addEventListener("keyup",(e)=>{
 const btn = document.getElementById("shootBtn");
 
 btn.addEventListener("touchstart",()=>{
-    if(player.holding) charging = true;
+    if(gameState === STATE.IDLE && ball.holding){
+        gameState = STATE.CHARGING;
+    }
 });
 
 btn.addEventListener("touchend",()=>{
-    if(charging) shoot();
-    charging = false;
-    power = 0;
+    if(gameState === STATE.CHARGING){
+        shoot();
+    }
 });
 
 // =====================
-// SHOOT
+// SHOOT (FIXED CORE)
 // =====================
 
 function shoot(){
 
-    if(!player.holding) return;
+    gameState = STATE.SHOOTING;
 
-    player.holding = false;
+    ball.holding = false;
     ball.moving = true;
 
     ball.x = player.x + 20;
@@ -171,23 +183,8 @@ function shoot(){
 
     ball.dx = 7 + strength * 6;
     ball.dy = -10 - strength * 9;
-}
 
-// =====================
-// PICKUP
-// =====================
-
-function pickup(){
-
-    let dx = ball.x - player.x;
-    let dy = ball.y - player.y;
-
-    let dist = Math.sqrt(dx*dx + dy*dy);
-
-    if(dist < 60){
-        player.holding = true;
-        ball.moving = false;
-    }
+    power = 0;
 }
 
 // =====================
@@ -195,10 +192,14 @@ function pickup(){
 // =====================
 
 function resetBall(){
-    player.holding = true;
+
+    ball.holding = true;
     ball.moving = false;
+
     ball.dx = 0;
     ball.dy = 0;
+
+    gameState = STATE.IDLE;
 }
 
 // =====================
@@ -212,11 +213,9 @@ function updatePlayer(){
 
     player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
-    if(player.holding){
+    if(ball.holding){
         ball.x = player.x + 20;
         ball.y = player.y;
-    } else {
-        pickup();
     }
 }
 
@@ -226,7 +225,7 @@ function updatePlayer(){
 
 function updateBall(){
 
-    if(charging){
+    if(gameState === STATE.CHARGING){
         power += 1.5;
         if(power > 100) power = 100;
     }
@@ -252,31 +251,25 @@ function updateBall(){
         ball.dx *= -0.8;
     }
 
-    // SCORE (inside rim rectangle area, not circle)
+    // SCORE
     if(
         ball.x > hoop.x &&
-        ball.x < hoop.x + hoop.width &&
+        ball.x < hoop.x + hoop.w &&
         ball.y > hoop.y &&
-        ball.y < hoop.y + hoop.height &&
         ball.dy > 0
     ){
         score++;
         document.getElementById("score").innerText = score;
         resetBall();
     }
-
-    if(ball.x < 0 || ball.x > canvas.width){
-        resetBall();
-    }
 }
 
 // =====================
-// DRAW (REALISTIC SIDE VIEW HOOP)
+// DRAW
 // =====================
 
 function draw(){
 
-    // background
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -298,34 +291,24 @@ function draw(){
     ctx.fillStyle = "#ff8800";
     ctx.fill();
 
-    // backboard (realistic placement)
-    ctx.fillStyle = "#ffffff";
+    // backboard
+    ctx.fillStyle = "#fff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // 🔴 RIM (side perspective = ellipse)
+    // rim
     ctx.beginPath();
-    ctx.ellipse(
-        hoop.x + hoop.width/2,
-        hoop.y,
-        hoop.width/2,
-        hoop.height/2,
-        0,
-        0,
-        Math.PI * 2
-    );
+    ctx.arc(hoop.x, hoop.y, 32, 0, Math.PI*2);
     ctx.strokeStyle = "red";
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.stroke();
 
-    // 🧵 NET (hanging downward, correct perspective)
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-
+    // net
+    ctx.strokeStyle = "#fff";
     for(let i=0;i<6;i++){
-        let x = hoop.x + i * 10;
+        let x = hoop.x - 20 + i*8;
         ctx.beginPath();
-        ctx.moveTo(x, hoop.y + 5);
-        ctx.lineTo(hoop.x + hoop.width/2, hoop.y + 70);
+        ctx.moveTo(x, hoop.y);
+        ctx.lineTo(hoop.x, hoop.y + 60);
         ctx.stroke();
     }
 
