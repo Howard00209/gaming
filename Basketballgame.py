@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="2D Basketball Game", layout="wide")
+st.set_page_config(page_title="Mobile Basketball", layout="wide")
 
-st.title("🏀 2D Basketball Game (Clean + Playable)")
+st.title("🏀 Mobile 2D Basketball Game (Touch Friendly)")
 
 html_code = """
 <!DOCTYPE html>
@@ -20,18 +20,18 @@ body {
 
 /* CANVAS */
 canvas {
-    display: block;
     background: #87CEEB;
+    display: block;
 }
 
-/* UI */
+/* SCORE UI */
 #ui {
     position: absolute;
     top: 10px;
     left: 10px;
-    padding: 10px;
     background: rgba(0,0,0,0.5);
     color: white;
+    padding: 10px;
     border-radius: 10px;
 }
 
@@ -41,13 +41,17 @@ canvas {
     bottom: 15px;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
 }
 
 button {
-    font-size: 18px;
-    padding: 10px;
-    margin: 4px;
-    border-radius: 8px;
+    font-size: 20px;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    background: #333;
+    color: white;
 }
 </style>
 </head>
@@ -57,9 +61,9 @@ button {
 <div id="ui">Score: <span id="score">0</span></div>
 
 <div id="controls">
-<button onclick="left()">⬅️</button>
-<button onclick="right()">➡️</button>
-<button onclick="shoot()">🏀 Shoot</button>
+<button onclick="moveLeft()">⬅️</button>
+<button onclick="moveRight()">➡️</button>
+<button onclick="shoot()">🏀 SHOOT</button>
 </div>
 
 <canvas id="game" width="1200" height="600"></canvas>
@@ -80,7 +84,7 @@ const player = {
     y: 450,
     w: 40,
     h: 80,
-    speed: 6,
+    speed: 8,
     holding: true
 };
 
@@ -90,11 +94,10 @@ const ball = {
     r: 12,
     dx: 0,
     dy: 0,
-    gravity: 0.4,
+    gravity: 0.6,
     moving: false
 };
 
-// hoop
 const hoop = {
     x: 1000,
     y: 200,
@@ -102,7 +105,6 @@ const hoop = {
     h: 10
 };
 
-// backboard
 const backboard = {
     x: 1080,
     y: 150,
@@ -111,32 +113,19 @@ const backboard = {
 };
 
 // =====================
-// INPUT
+// MOBILE BUTTONS
 // =====================
 
-let keys = {};
+function moveLeft(){
+    player.x -= player.speed;
+}
 
-document.addEventListener("keydown",(e)=>{
-    keys[e.code] = true;
-
-    if(e.code === "Space"){
-        shoot();
-    }
-});
-
-document.addEventListener("keyup",(e)=>{
-    keys[e.code] = false;
-});
+function moveRight(){
+    player.x += player.speed;
+}
 
 // =====================
-// MOBILE
-// =====================
-
-function left(){ player.x -= player.speed; }
-function right(){ player.x += player.speed; }
-
-// =====================
-// SHOOT
+// SHOOT (IMPROVED ARC)
 // =====================
 
 function shoot(){
@@ -145,22 +134,23 @@ function shoot(){
     player.holding = false;
     ball.moving = true;
 
-    ball.dx = 8;
-    ball.dy = -12;
+    // smoother basketball arc
+    ball.dx = 10;
+    ball.dy = -14;
 }
 
 // =====================
 // PICKUP
 // =====================
 
-function pickupBall(){
+function pickup(){
 
     let dx = ball.x - player.x;
     let dy = ball.y - player.y;
 
     let dist = Math.sqrt(dx*dx + dy*dy);
 
-    if(dist < 50){
+    if(dist < 60){
         player.holding = true;
         ball.moving = false;
     }
@@ -183,17 +173,13 @@ function resetBall(){
 
 function updatePlayer(){
 
-    if(keys["KeyA"] || keys["ArrowLeft"]) player.x -= player.speed;
-    if(keys["KeyD"] || keys["ArrowRight"]) player.x += player.speed;
-
-    // keep in bounds
     player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
     if(player.holding){
         ball.x = player.x + 20;
         ball.y = player.y;
     } else {
-        pickupBall();
+        pickup();
     }
 }
 
@@ -215,7 +201,7 @@ function updateBall(){
         resetBall();
     }
 
-    // backboard collision
+    // backboard bounce
     if(
         ball.x > backboard.x &&
         ball.x < backboard.x + backboard.w &&
@@ -225,7 +211,7 @@ function updateBall(){
         ball.dx *= -0.8;
     }
 
-    // score (only from above)
+    // SCORE (must fall downward)
     if(
         ball.x > hoop.x &&
         ball.x < hoop.x + hoop.w &&
@@ -247,18 +233,17 @@ function updateBall(){
 // DRAW
 // =====================
 
-function drawCourt(){
+function draw(){
 
+    // background
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     // ground
     ctx.fillStyle = "#c27c3e";
     ctx.fillRect(0,500,canvas.width,100);
-}
 
-function drawPlayer(){
-
+    // player
     ctx.fillStyle = "#2563eb";
     ctx.fillRect(player.x, player.y, player.w, player.h);
 
@@ -267,23 +252,17 @@ function drawPlayer(){
     ctx.arc(player.x+20, player.y-10, 15, 0, Math.PI*2);
     ctx.fillStyle = "#ffdbac";
     ctx.fill();
-}
 
-function drawBall(){
-
+    // ball
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
     ctx.fillStyle = "#ff8800";
     ctx.fill();
-}
 
-function drawHoop(){
-
-    // backboard
-    ctx.fillStyle = "#ffffff";
+    // hoop
+    ctx.fillStyle = "#fff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // rim
     ctx.fillStyle = "red";
     ctx.fillRect(hoop.x, hoop.y, hoop.w, hoop.h);
 }
@@ -293,14 +272,9 @@ function drawHoop(){
 // =====================
 
 function loop(){
-
     updatePlayer();
     updateBall();
-
-    drawCourt();
-    drawHoop();
-    drawPlayer();
-    drawBall();
+    draw();
 
     requestAnimationFrame(loop);
 }
