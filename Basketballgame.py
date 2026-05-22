@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Clean Hoop", layout="wide")
+st.set_page_config(page_title="Red Hoop Basketball", layout="wide")
 
-st.title("🏀 Basketball Game (Clean Realistic Hoop + Fixed Shoot)")
+st.title("🏀 Basketball Game (Red Hoop + Net)")
 
 html_code = """
 <!DOCTYPE html>
@@ -97,7 +97,7 @@ const ball = {
 };
 
 // =====================
-// REALISTIC HOOP (CLEAN STYLE)
+// HOOP (RED RIM)
 // =====================
 
 const hoop = {
@@ -140,7 +140,7 @@ document.addEventListener("keyup",(e)=>{
     }
 });
 
-// MOBILE HOLD BUTTON
+// MOBILE
 const btn = document.getElementById("shootBtn");
 
 btn.addEventListener("touchstart",()=>{
@@ -154,7 +154,7 @@ btn.addEventListener("touchend",()=>{
 });
 
 // =====================
-// SHOOT (FIXED RELIABILITY)
+// SHOOT
 // =====================
 
 function shoot(){
@@ -221,7 +221,7 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL PHYSICS (STABLE)
+// BALL
 // =====================
 
 function updateBall(){
@@ -238,12 +238,11 @@ function updateBall(){
 
     ball.dy += ball.gravity;
 
-    // floor
     if(ball.y > canvas.height - 20){
         resetBall();
     }
 
-    // backboard bounce (clean)
+    // backboard bounce
     if(
         ball.x > backboard.x &&
         ball.x < backboard.x + backboard.w &&
@@ -253,7 +252,7 @@ function updateBall(){
         ball.dx *= -0.8;
     }
 
-    // SCORE (rim based)
+    // SCORE
     let dx = ball.x - hoop.x;
     let dy = ball.y - hoop.y;
 
@@ -271,7 +270,7 @@ function updateBall(){
 }
 
 // =====================
-// DRAW (CLEAN REALISTIC HOOP)
+// DRAW (RED HOOP + NET)
 // =====================
 
 function draw(){
@@ -283,7 +282,7 @@ function draw(){
     ctx.fillStyle = "#c27c3e";
     ctx.fillRect(0,500,canvas.width,100);
 
-    // PLAYER
+    // player
     ctx.fillStyle = "#2563eb";
     ctx.fillRect(player.x, player.y, player.w, player.h);
 
@@ -292,36 +291,36 @@ function draw(){
     ctx.fillStyle = "#ffdbac";
     ctx.fill();
 
-    // BALL
+    // ball
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
     ctx.fillStyle = "#ff8800";
     ctx.fill();
 
-    // BACKBOARD (clean rectangle)
+    // backboard
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // RIM (realistic thin circle)
+    // 🔴 RED RIM
     ctx.beginPath();
     ctx.arc(hoop.x, hoop.y, hoop.r, 0, Math.PI*2);
-    ctx.strokeStyle = "orange";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = "red";
+    ctx.lineWidth = 5;
     ctx.stroke();
 
-    // SIMPLE NET (clean hanging lines)
+    // 🧵 NET (clean red hoop net style)
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
 
-    for(let i=0;i<6;i++){
-        let x = hoop.x - 20 + i*8;
+    for(let i=0;i<7;i++){
+        let x = hoop.x - 22 + i*7;
         ctx.beginPath();
         ctx.moveTo(x, hoop.y);
-        ctx.lineTo(hoop.x, hoop.y + 55);
+        ctx.lineTo(hoop.x, hoop.y + 60);
         ctx.stroke();
     }
 
-    // POWER BAR
+    // power bar
     ctx.fillStyle = "black";
     ctx.fillRect(20,80,100,10);
 
