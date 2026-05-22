@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="3D Basketball Game", layout="wide")
 
-st.title("🏀 3D Basketball Game (Clean Background)")
+st.title("🏀 3D Basketball Game (Pickup + Background)")
 
 html_code = """
 <!DOCTYPE html>
@@ -39,19 +39,16 @@ body {
 <script>
 
 // =========================
-// SCENE
+// SCENE + BACKGROUND
 // =========================
 
 const scene = new THREE.Scene();
 
-/* 🌄 NEW BACKGROUND (stadium sky feel) */
+/* 🌄 SKY BACKGROUND */
 const loader = new THREE.TextureLoader();
-
-const skyTexture = loader.load(
+scene.background = loader.load(
     "https://threejs.org/examples/textures/skybox/sky.png"
 );
-
-scene.background = skyTexture;
 
 // CAMERA
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -68,7 +65,7 @@ light.position.set(5,10,5);
 scene.add(light);
 
 // =========================
-// SIMPLE COURT FLOOR (NO LINES)
+// COURT
 // =========================
 
 const floor = new THREE.Mesh(
@@ -110,7 +107,7 @@ let holding = true;
 let ballVel = {x:0,y:0,z:0};
 
 // =========================
-// HOOP + BACKBOARD
+// HOOP
 // =========================
 
 const backboard = new THREE.Mesh(
@@ -138,7 +135,7 @@ let score = 0;
 document.addEventListener("keydown",(e)=>{
     keys[e.code] = true;
 
-    if(e.code === "Space" && holding){
+    if(e.code === "Space"){
         shoot();
     }
 });
@@ -152,6 +149,8 @@ document.addEventListener("keyup",(e)=>{
 // =========================
 
 function shoot(){
+    if(!holding) return;
+
     holding = false;
 
     ballVel.x = 0.35;
@@ -159,12 +158,29 @@ function shoot(){
 }
 
 // =========================
-// RESET BALL
+// RESET
 // =========================
 
 function resetBall(){
     holding = true;
     ballVel = {x:0,y:0,z:0};
+}
+
+// =========================
+// DISTANCE PICKUP SYSTEM (NEW)
+// =========================
+
+function tryPickup(){
+
+    let dx = ball.position.x - body.position.x;
+    let dy = ball.position.y - body.position.y;
+    let dz = ball.position.z - body.position.z;
+
+    let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+    if(dist < 1.5){
+        resetBall();
+    }
 }
 
 // =========================
@@ -184,12 +200,15 @@ function updatePlayer(){
         body.position.z
     );
 
+    // BALL IN HANDS
     if(holding){
         ball.position.set(
             body.position.x + 0.6,
             body.position.y + 1.1,
             body.position.z
         );
+    } else {
+        tryPickup(); // NEW: pickup system
     }
 }
 
@@ -207,7 +226,7 @@ function updateBall(){
 
     ballVel.y -= 0.015;
 
-    // floor bounce
+    // floor
     if(ball.position.y < 0.3){
         ball.position.y = 0.3;
         ballVel.y *= -0.5;
@@ -234,7 +253,7 @@ function updateBall(){
         resetBall();
     }
 
-    // out of bounds
+    // OUT OF BOUNDS → RETURN TO PLAYER
     if(
         ball.position.x < -24 ||
         ball.position.x > 24 ||
