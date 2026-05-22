@@ -82,8 +82,7 @@ const hoop = {
     x: 980,
     y: 220,
     width: 90,
-    height: 12,
-    direction:1
+    height: 12
 };
 
 // ========================================
@@ -206,7 +205,7 @@ function drawCourt(){
     ctx.fillStyle = "#C97B30";
     ctx.fillRect(0,640,canvas.width,80);
 
-    // Lines
+    // Court lines
     ctx.strokeStyle = "white";
     ctx.lineWidth = 4;
 
@@ -245,7 +244,7 @@ function drawCourt(){
 function drawUI(){
 
     ctx.fillStyle = "rgba(0,0,0,0.65)";
-    ctx.fillRect(20,20,340,180);
+    ctx.fillRect(20,20,340,220);
 
     ctx.fillStyle = "white";
     ctx.font = "32px Arial";
@@ -255,18 +254,18 @@ function drawUI(){
 
     ctx.font = "22px Arial";
     ctx.fillText("Move: A / D",40,170);
-    ctx.fillText("Jump: SPACE",40,200);
-    ctx.fillText("Hold T to Shoot",40,230);
+    ctx.fillText("Jump: SPACE",40,205);
+    ctx.fillText("Hold T to Shoot",40,240);
 
     // Power bar
     if(charging){
 
         ctx.fillStyle = "lime";
 
-        ctx.fillRect(20,250,shootPower*12,24);
+        ctx.fillRect(20,270,shootPower*12,24);
 
         ctx.strokeStyle = "white";
-        ctx.strokeRect(20,250,240,24);
+        ctx.strokeRect(20,270,240,24);
     }
 }
 
@@ -347,7 +346,7 @@ function updateBall(){
 
         ball.dy += ball.gravity;
 
-        // Trail
+        // Trail effect
         ball.trail.push({
             x:ball.x,
             y:ball.y
@@ -371,10 +370,10 @@ function updateBall(){
             ball.dx *= -0.8;
         }
 
-        // Ball friction
+        // Friction
         ball.dx *= 0.995;
 
-        // Score
+        // SCORE
         if(
             ball.x > hoop.x &&
             ball.x < hoop.x + hoop.width &&
@@ -409,19 +408,6 @@ function updateBall(){
 }
 
 // ========================================
-// MOVING HOOP
-// ========================================
-
-function updateHoop(){
-
-    hoop.x += hoop.direction * 2;
-
-    if(hoop.x > 1050 || hoop.x < 860){
-        hoop.direction *= -1;
-    }
-}
-
-// ========================================
 // GAME LOOP
 // ========================================
 
@@ -433,7 +419,6 @@ function gameLoop(){
 
     updatePlayer();
     updateBall();
-    updateHoop();
 
     drawPlayer();
     drawBall();
