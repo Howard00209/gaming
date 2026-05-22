@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Realistic Basketball", layout="wide")
+st.set_page_config(page_title="Basketball Clean Hoop", layout="wide")
 
-st.title("🏀 Basketball Game (Fixed Shooting + Real Hoop)")
+st.title("🏀 Basketball Game (Clean Realistic Hoop + Fixed Shoot)")
 
 html_code = """
 <!DOCTYPE html>
@@ -19,7 +19,7 @@ body {
 }
 
 canvas {
-    background: linear-gradient(#87CEEB, #cfefff);
+    background: linear-gradient(#87CEEB, #dff3ff);
     display: block;
 }
 
@@ -43,11 +43,10 @@ canvas {
 button {
     font-size: 18px;
     padding: 14px;
-    margin: 4px;
     border-radius: 10px;
-    border: none;
     background: #222;
     color: white;
+    border: none;
 }
 </style>
 </head>
@@ -60,7 +59,7 @@ Power: <span id="power">0</span>
 </div>
 
 <div id="controls">
-<button id="shootBtn">🏀 HOLD SHOOT</button>
+<button id="shootBtn">🏀 HOLD TO SHOOT</button>
 </div>
 
 <canvas id="game" width="1200" height="600"></canvas>
@@ -98,27 +97,20 @@ const ball = {
 };
 
 // =====================
-// REALISTIC HOOP
+// REALISTIC HOOP (CLEAN STYLE)
 // =====================
 
 const hoop = {
     x: 980,
     y: 220,
-    r: 35
+    r: 32
 };
 
 const backboard = {
-    x: 1040,
+    x: 1045,
     y: 150,
-    w: 15,
-    h: 150
-};
-
-const pole = {
-    x: 1055,
-    y: 120,
-    w: 10,
-    h: 380
+    w: 12,
+    h: 140
 };
 
 // =====================
@@ -127,7 +119,7 @@ const pole = {
 
 let keys = {};
 
-// PC
+// PC HOLD T
 document.addEventListener("keydown",(e)=>{
 
     keys[e.code] = true;
@@ -142,15 +134,13 @@ document.addEventListener("keyup",(e)=>{
     keys[e.code] = false;
 
     if(e.code === "KeyT"){
-        if(charging){
-            shoot();
-        }
+        if(charging) shoot();
         charging = false;
         power = 0;
     }
 });
 
-// MOBILE
+// MOBILE HOLD BUTTON
 const btn = document.getElementById("shootBtn");
 
 btn.addEventListener("touchstart",()=>{
@@ -158,15 +148,13 @@ btn.addEventListener("touchstart",()=>{
 });
 
 btn.addEventListener("touchend",()=>{
-    if(charging){
-        shoot();
-    }
+    if(charging) shoot();
     charging = false;
     power = 0;
 });
 
 // =====================
-// SHOOT (FIXED CORE BUG)
+// SHOOT (FIXED RELIABILITY)
 // =====================
 
 function shoot(){
@@ -181,8 +169,8 @@ function shoot(){
 
     let strength = Math.min(power / 25, 1);
 
-    ball.dx = 7 + strength * 7;
-    ball.dy = -11 - strength * 10;
+    ball.dx = 7 + strength * 6;
+    ball.dy = -10 - strength * 9;
 }
 
 // =====================
@@ -233,7 +221,7 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL PHYSICS (FIXED STABILITY)
+// BALL PHYSICS (STABLE)
 // =====================
 
 function updateBall(){
@@ -255,7 +243,7 @@ function updateBall(){
         resetBall();
     }
 
-    // backboard bounce
+    // backboard bounce (clean)
     if(
         ball.x > backboard.x &&
         ball.x < backboard.x + backboard.w &&
@@ -265,7 +253,7 @@ function updateBall(){
         ball.dx *= -0.8;
     }
 
-    // SCORE (inside rim zone)
+    // SCORE (rim based)
     let dx = ball.x - hoop.x;
     let dy = ball.y - hoop.y;
 
@@ -283,7 +271,7 @@ function updateBall(){
 }
 
 // =====================
-// DRAW REALISTIC HOOP
+// DRAW (CLEAN REALISTIC HOOP)
 // =====================
 
 function draw(){
@@ -295,33 +283,7 @@ function draw(){
     ctx.fillStyle = "#c27c3e";
     ctx.fillRect(0,500,canvas.width,100);
 
-    // pole
-    ctx.fillStyle = "#555";
-    ctx.fillRect(pole.x, pole.y, pole.w, pole.h);
-
-    // backboard
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
-
-    // rim (realistic circle)
-    ctx.beginPath();
-    ctx.arc(hoop.x, hoop.y, hoop.r, 0, Math.PI*2);
-    ctx.strokeStyle = "orange";
-    ctx.lineWidth = 6;
-    ctx.stroke();
-
-    // net (cone style)
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-
-    for(let i=0;i<6;i++){
-        ctx.beginPath();
-        ctx.moveTo(hoop.x - 25 + i*10, hoop.y + 5);
-        ctx.lineTo(hoop.x, hoop.y + 70);
-        ctx.stroke();
-    }
-
-    // player
+    // PLAYER
     ctx.fillStyle = "#2563eb";
     ctx.fillRect(player.x, player.y, player.w, player.h);
 
@@ -330,13 +292,36 @@ function draw(){
     ctx.fillStyle = "#ffdbac";
     ctx.fill();
 
-    // ball
+    // BALL
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
     ctx.fillStyle = "#ff8800";
     ctx.fill();
 
-    // power bar
+    // BACKBOARD (clean rectangle)
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
+
+    // RIM (realistic thin circle)
+    ctx.beginPath();
+    ctx.arc(hoop.x, hoop.y, hoop.r, 0, Math.PI*2);
+    ctx.strokeStyle = "orange";
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // SIMPLE NET (clean hanging lines)
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+
+    for(let i=0;i<6;i++){
+        let x = hoop.x - 20 + i*8;
+        ctx.beginPath();
+        ctx.moveTo(x, hoop.y);
+        ctx.lineTo(hoop.x, hoop.y + 55);
+        ctx.stroke();
+    }
+
+    // POWER BAR
     ctx.fillStyle = "black";
     ctx.fillRect(20,80,100,10);
 
