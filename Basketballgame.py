@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Stable Hoop", layout="wide")
+st.set_page_config(page_title="Basketball Movement Fix", layout="wide")
 
-st.title("🏀 Basketball Game (No Sticking + Single Hoop Fix)")
+st.title("🏀 Basketball Game (Player Movement Fixed)")
 
 html_code = """
 <!DOCTYPE html>
@@ -12,20 +12,57 @@ html_code = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial;
-}
+body { margin:0; overflow:hidden; font-family:Arial; }
 
 canvas {
     background: linear-gradient(#87CEEB, #dff3ff);
-    display: block;
+    display:block;
+}
+
+/* UI */
+#ui {
+    position:absolute;
+    top:10px;
+    left:10px;
+    background:rgba(0,0,0,0.6);
+    color:white;
+    padding:10px;
+    border-radius:10px;
+}
+
+/* MOBILE BUTTONS */
+#controls {
+    position:absolute;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:10px;
+}
+
+button {
+    font-size:18px;
+    padding:12px;
+    border-radius:10px;
+    background:#222;
+    color:white;
+    border:none;
 }
 </style>
 </head>
 
 <body>
+
+<div id="ui">
+Score: <span id="score">0</span><br>
+Power: <span id="power">0</span>
+</div>
+
+<div id="controls">
+<button id="leftBtn">⬅️ LEFT</button>
+<button id="shootBtn">🏀 SHOOT</button>
+<button id="rightBtn">➡️ RIGHT</button>
+</div>
 
 <canvas id="game" width="1200" height="600"></canvas>
 
@@ -39,15 +76,25 @@ const ctx = canvas.getContext("2d");
 // =====================
 
 let score = 0;
+let power = 0;
+let charging = false;
+
+// =====================
+// PLAYER (FIXED MOVEMENT)
+// =====================
 
 const player = {
     x: 120,
     y: 450,
     w: 40,
     h: 80,
-    speed: 6,
+    speed: 7,
     holding: true
 };
+
+// =====================
+// BALL
+// =====================
 
 const ball = {
     x: 0,
@@ -60,7 +107,7 @@ const ball = {
 };
 
 // =====================
-// SINGLE HOOP (CLEAN)
+// HOOP
 // =====================
 
 const hoop = {
@@ -78,16 +125,32 @@ const backboard = {
 };
 
 // =====================
-// INPUT (keyboard only for simplicity)
+// INPUT SYSTEM (FIXED)
 // =====================
 
 let keys = {};
 
-document.addEventListener("keydown",(e)=>keys[e.code]=true);
-document.addEventListener("keyup",(e)=>keys[e.code]=false);
+// PC movement
+document.addEventListener("keydown",(e)=>{
+    keys[e.code] = true;
+});
 
-// click to shoot (simple test control)
-document.addEventListener("mousedown", shoot);
+document.addEventListener("keyup",(e)=>{
+    keys[e.code] = false;
+});
+
+// MOBILE movement
+let moveLeft = false;
+let moveRight = false;
+
+document.getElementById("leftBtn").addEventListener("touchstart", ()=> moveLeft = true);
+document.getElementById("leftBtn").addEventListener("touchend", ()=> moveLeft = false);
+
+document.getElementById("rightBtn").addEventListener("touchstart", ()=> moveRight = true);
+document.getElementById("rightBtn").addEventListener("touchend", ()=> moveRight = false);
+
+// SHOOT (mobile + PC)
+document.getElementById("shootBtn").addEventListener("touchstart", shoot);
 
 // =====================
 // SHOOT
@@ -119,16 +182,23 @@ function resetBall(){
 }
 
 // =====================
-// PLAYER
+// PLAYER UPDATE (FIXED MOVEMENT)
 // =====================
 
 function updatePlayer(){
 
-    if(keys["ArrowLeft"]) player.x -= player.speed;
-    if(keys["ArrowRight"]) player.x += player.speed;
+    // PC
+    if(keys["ArrowLeft"] || keys["KeyA"]) player.x -= player.speed;
+    if(keys["ArrowRight"] || keys["KeyD"]) player.x += player.speed;
 
+    // MOBILE
+    if(moveLeft) player.x -= player.speed;
+    if(moveRight) player.x += player.speed;
+
+    // clamp
     player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
+    // ball follows player
     if(player.holding){
         ball.x = player.x + 20;
         ball.y = player.y;
@@ -136,7 +206,7 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL PHYSICS (NO STICKING FIX)
+// BALL
 // =====================
 
 function updateBall(){
@@ -148,75 +218,35 @@ function updateBall(){
 
     ball.dy += ball.gravity;
 
-    // floor
     if(ball.y > canvas.height - 20){
         resetBall();
     }
 
-    // =====================
-    // BACKBOARD BOUNCE
-    // =====================
-
+    // backboard bounce
     if(
-        ball.x + ball.r > backboard.x &&
-        ball.x - ball.r < backboard.x + backboard.w &&
-        ball.y + ball.r > backboard.y &&
-        ball.y - ball.r < backboard.y + backboard.h
+        ball.x > backboard.x &&
+        ball.x < backboard.x + backboard.w &&
+        ball.y > backboard.y &&
+        ball.y < backboard.y + backboard.h
     ){
         ball.dx *= -0.8;
     }
 
-    // =====================
-    // RIM COLLISION (ANTI-STICK FIX)
-    // =====================
-
-    let rimLeft = hoop.x;
-    let rimRight = hoop.x + hoop.w;
-    let rimTop = hoop.y;
-    let rimBottom = hoop.y + hoop.h;
-
-    let hitRim =
-        ball.x > rimLeft - ball.r &&
-        ball.x < rimRight + ball.r &&
-        ball.y > rimTop - ball.r &&
-        ball.y < rimBottom + ball.r;
-
-    if(hitRim){
-
-        // push ball OUT so it doesn't stick
-        if(ball.x < (rimLeft + rimRight)/2){
-            ball.x -= 2;
-        } else {
-            ball.x += 2;
-        }
-
-        // bounce only if moving into rim
-        if(ball.dy > 0){
-            ball.dy *= -0.5;
-        }
-        ball.dx *= 0.6;
-    }
-
-    // =====================
-    // SCORING (ONLY FROM ABOVE)
-    // =====================
-
-    let inside = ball.x > rimLeft && ball.x < rimRight;
-    let falling = ball.dy > 0;
-
+    // score
     if(
-        inside &&
-        ball.y > rimTop &&
-        ball.y < rimBottom + 10 &&
-        falling
+        ball.x > hoop.x &&
+        ball.x < hoop.x + hoop.w &&
+        ball.y > hoop.y &&
+        ball.dy > 0
     ){
         score++;
+        document.getElementById("score").innerText = score;
         resetBall();
     }
 }
 
 // =====================
-// DRAW (SINGLE HOOP ONLY)
+// DRAW
 // =====================
 
 function draw(){
@@ -241,19 +271,15 @@ function draw(){
     ctx.fillStyle = "#fff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // =====================
-    // SINGLE RIM ONLY (NO DOUBLE LINE)
-    // =====================
-
+    // rim (single side view)
     ctx.strokeStyle = "red";
     ctx.lineWidth = 5;
-
     ctx.beginPath();
     ctx.moveTo(hoop.x, hoop.y);
     ctx.lineTo(hoop.x + hoop.w, hoop.y);
     ctx.stroke();
 
-    // net (visual only)
+    // net
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 1;
 
