@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Hold Shoot Fix", layout="wide")
+st.set_page_config(page_title="Basketball Camera Follow Game", layout="wide")
 
-st.title("🏀 Basketball Game (Hold T + Mobile Button Fixed)")
+st.title("🏀 Basketball Game (Camera Follow + Mobile + PC)")
 
 html_code = """
 <!DOCTYPE html>
@@ -12,39 +12,47 @@ html_code = """
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body { margin:0; overflow:hidden; font-family:Arial; }
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial;
+}
 
 canvas {
     background: linear-gradient(#87CEEB, #dff3ff);
-    display:block;
+    display: block;
 }
 
+/* UI */
 #ui {
-    position:absolute;
-    top:10px;
-    left:10px;
-    background:rgba(0,0,0,0.6);
-    color:white;
-    padding:10px;
-    border-radius:10px;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    z-index: 10;
 }
 
+/* MOBILE CONTROLS */
 #controls {
-    position:absolute;
-    bottom:15px;
-    left:50%;
-    transform:translateX(-50%);
-    display:flex;
-    gap:10px;
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 10;
 }
 
 button {
-    font-size:18px;
-    padding:12px;
-    border-radius:10px;
-    background:#222;
-    color:white;
-    border:none;
+    font-size: 18px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #222;
+    color: white;
+    border: none;
 }
 </style>
 </head>
@@ -58,7 +66,7 @@ Power: <span id="power">0</span>
 
 <div id="controls">
 <button id="leftBtn">⬅️ LEFT</button>
-<button id="shootBtn">🏀 HOLD SHOOT</button>
+<button id="shootBtn">🏀 SHOOT</button>
 <button id="rightBtn">➡️ RIGHT</button>
 </div>
 
@@ -70,12 +78,18 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 // =====================
+// WORLD + CAMERA
+// =====================
+
+let WORLD_WIDTH = 2200;
+let cameraX = 0;
+
+// =====================
 // STATE
 // =====================
 
 let score = 0;
 let power = 0;
-
 let charging = false;
 
 // =====================
@@ -131,10 +145,7 @@ let keys = {};
 let moveLeft = false;
 let moveRight = false;
 
-// =====================
-// PC MOVEMENT
-// =====================
-
+// PC movement
 document.addEventListener("keydown",(e)=>{
 
     keys[e.code] = true;
@@ -155,27 +166,19 @@ document.addEventListener("keyup",(e)=>{
     }
 });
 
-// =====================
-// MOBILE MOVEMENT
-// =====================
-
+// MOBILE movement
 document.getElementById("leftBtn").addEventListener("touchstart",()=> moveLeft = true);
 document.getElementById("leftBtn").addEventListener("touchend",()=> moveLeft = false);
 
 document.getElementById("rightBtn").addEventListener("touchstart",()=> moveRight = true);
 document.getElementById("rightBtn").addEventListener("touchend",()=> moveRight = false);
 
-// =====================
-// MOBILE SHOOT (HOLD)
-// =====================
-
-const shootBtn = document.getElementById("shootBtn");
-
-shootBtn.addEventListener("touchstart", ()=>{
+// MOBILE shoot
+document.getElementById("shootBtn").addEventListener("touchstart",()=>{
     if(player.holding) charging = true;
 });
 
-shootBtn.addEventListener("touchend", ()=>{
+document.getElementById("shootBtn").addEventListener("touchend",()=>{
     if(charging){
         shoot();
         charging = false;
@@ -184,7 +187,7 @@ shootBtn.addEventListener("touchend", ()=>{
 });
 
 // =====================
-// SHOOT
+// SHOOT SYSTEM
 // =====================
 
 function shoot(){
@@ -215,6 +218,20 @@ function resetBall(){
 }
 
 // =====================
+// CAMERA FOLLOW
+// =====================
+
+function updateCamera(){
+
+    cameraX = player.x - canvas.width / 2;
+
+    if(cameraX < 0) cameraX = 0;
+    if(cameraX > WORLD_WIDTH - canvas.width){
+        cameraX = WORLD_WIDTH - canvas.width;
+    }
+}
+
+// =====================
 // PLAYER UPDATE
 // =====================
 
@@ -226,7 +243,7 @@ function updatePlayer(){
     if(moveLeft) player.x -= player.speed;
     if(moveRight) player.x += player.speed;
 
-    player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+    player.x = Math.max(0, Math.min(WORLD_WIDTH - player.w, player.x));
 
     if(player.holding){
         ball.x = player.x + 20;
@@ -280,37 +297,41 @@ function updateBall(){
 }
 
 // =====================
-// DRAW
+// DRAW WITH CAMERA
 // =====================
 
 function draw(){
 
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // sky
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
+    // ground
     ctx.fillStyle = "#c27c3e";
-    ctx.fillRect(0,500,canvas.width,100);
+    ctx.fillRect(-cameraX,500,WORLD_WIDTH,100);
 
     // player
     ctx.fillStyle = "#2563eb";
-    ctx.fillRect(player.x, player.y, player.w, player.h);
+    ctx.fillRect(player.x - cameraX, player.y, player.w, player.h);
 
     // ball
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+    ctx.arc(ball.x - cameraX, ball.y, ball.r, 0, Math.PI*2);
     ctx.fillStyle = "#ff8800";
     ctx.fill();
 
     // backboard
     ctx.fillStyle = "#fff";
-    ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
+    ctx.fillRect(backboard.x - cameraX, backboard.y, backboard.w, backboard.h);
 
     // rim
     ctx.strokeStyle = "red";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(hoop.x, hoop.y);
-    ctx.lineTo(hoop.x + hoop.w, hoop.y);
+    ctx.moveTo(hoop.x - cameraX, hoop.y);
+    ctx.lineTo(hoop.x + hoop.w - cameraX, hoop.y);
     ctx.stroke();
 
     // net
@@ -318,10 +339,10 @@ function draw(){
     ctx.lineWidth = 1;
 
     for(let i=0;i<6;i++){
-        let x = hoop.x + i*10;
+        let x = hoop.x - cameraX + i*10;
         ctx.beginPath();
         ctx.moveTo(x, hoop.y);
-        ctx.lineTo(hoop.x + hoop.w/2, hoop.y + 60);
+        ctx.lineTo(hoop.x - cameraX + hoop.w/2, hoop.y + 60);
         ctx.stroke();
     }
 
@@ -340,6 +361,7 @@ function draw(){
 function loop(){
     updatePlayer();
     updateBall();
+    updateCamera();
     draw();
     requestAnimationFrame(loop);
 }
