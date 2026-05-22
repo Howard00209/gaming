@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Red Hoop Basketball", layout="wide")
+st.set_page_config(page_title="Basketball Perspective Fix", layout="wide")
 
-st.title("🏀 Basketball Game (Red Hoop + Net)")
+st.title("🏀 Basketball Game (Normal Perspective Hoop Fixed)")
 
 html_code = """
 <!DOCTYPE html>
@@ -97,20 +97,21 @@ const ball = {
 };
 
 // =====================
-// HOOP (RED RIM)
+// HOOP (SIDE PERSPECTIVE FIX)
 // =====================
 
 const hoop = {
     x: 980,
-    y: 220,
-    r: 32
+    y: 240,
+    width: 60,
+    height: 18
 };
 
 const backboard = {
     x: 1045,
     y: 150,
     w: 12,
-    h: 140
+    h: 150
 };
 
 // =====================
@@ -119,7 +120,6 @@ const backboard = {
 
 let keys = {};
 
-// PC HOLD T
 document.addEventListener("keydown",(e)=>{
 
     keys[e.code] = true;
@@ -252,13 +252,14 @@ function updateBall(){
         ball.dx *= -0.8;
     }
 
-    // SCORE
-    let dx = ball.x - hoop.x;
-    let dy = ball.y - hoop.y;
-
-    let dist = Math.sqrt(dx*dx + dy*dy);
-
-    if(dist < hoop.r && ball.dy > 0){
+    // SCORE (inside rim rectangle area, not circle)
+    if(
+        ball.x > hoop.x &&
+        ball.x < hoop.x + hoop.width &&
+        ball.y > hoop.y &&
+        ball.y < hoop.y + hoop.height &&
+        ball.dy > 0
+    ){
         score++;
         document.getElementById("score").innerText = score;
         resetBall();
@@ -270,7 +271,7 @@ function updateBall(){
 }
 
 // =====================
-// DRAW (RED HOOP + NET)
+// DRAW (REALISTIC SIDE VIEW HOOP)
 // =====================
 
 function draw(){
@@ -297,26 +298,34 @@ function draw(){
     ctx.fillStyle = "#ff8800";
     ctx.fill();
 
-    // backboard
+    // backboard (realistic placement)
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // 🔴 RED RIM
+    // 🔴 RIM (side perspective = ellipse)
     ctx.beginPath();
-    ctx.arc(hoop.x, hoop.y, hoop.r, 0, Math.PI*2);
+    ctx.ellipse(
+        hoop.x + hoop.width/2,
+        hoop.y,
+        hoop.width/2,
+        hoop.height/2,
+        0,
+        0,
+        Math.PI * 2
+    );
     ctx.strokeStyle = "red";
     ctx.lineWidth = 5;
     ctx.stroke();
 
-    // 🧵 NET (clean red hoop net style)
+    // 🧵 NET (hanging downward, correct perspective)
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2;
 
-    for(let i=0;i<7;i++){
-        let x = hoop.x - 22 + i*7;
+    for(let i=0;i<6;i++){
+        let x = hoop.x + i * 10;
         ctx.beginPath();
-        ctx.moveTo(x, hoop.y);
-        ctx.lineTo(hoop.x, hoop.y + 60);
+        ctx.moveTo(x, hoop.y + 5);
+        ctx.lineTo(hoop.x + hoop.width/2, hoop.y + 70);
         ctx.stroke();
     }
 
