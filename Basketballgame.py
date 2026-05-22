@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Basketball Hold-to-Shoot", layout="wide")
+st.set_page_config(page_title="Basketball Fixed", layout="wide")
 
-st.title("🏀 Hold-to-Shoot Basketball (PC + Mobile)")
+st.title("🏀 Basketball Game (Fixed Ball + Net Added)")
 
 html_code = """
 <!DOCTYPE html>
@@ -23,7 +23,6 @@ canvas {
     display: block;
 }
 
-/* UI */
 #ui {
     position: absolute;
     top: 10px;
@@ -34,7 +33,6 @@ canvas {
     border-radius: 10px;
 }
 
-/* MOBILE BUTTON */
 #controls {
     position: absolute;
     bottom: 15px;
@@ -44,8 +42,8 @@ canvas {
 
 button {
     font-size: 18px;
-    padding: 16px;
-    border-radius: 12px;
+    padding: 14px;
+    border-radius: 10px;
     background: #222;
     color: white;
     border: none;
@@ -72,7 +70,7 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 // =====================
-// GAME STATE
+// STATE
 // =====================
 
 let score = 0;
@@ -94,7 +92,7 @@ const ball = {
     r: 12,
     dx: 0,
     dy: 0,
-    gravity: 0.5,
+    gravity: 0.45,
     moving: false
 };
 
@@ -113,18 +111,17 @@ const backboard = {
 };
 
 // =====================
-// INPUT
+// INPUT (PC + MOBILE)
 // =====================
 
 let keys = {};
 
-// PC KEYBOARD
+// PC
 document.addEventListener("keydown",(e)=>{
 
     keys[e.code] = true;
 
-    // HOLD T TO CHARGE
-    if(e.code === "KeyT" && player.holding){
+    if(e.code === "KeyT"){
         charging = true;
     }
 });
@@ -133,7 +130,6 @@ document.addEventListener("keyup",(e)=>{
 
     keys[e.code] = false;
 
-    // RELEASE T TO SHOOT
     if(e.code === "KeyT" && charging){
         shoot();
         charging = false;
@@ -141,40 +137,38 @@ document.addEventListener("keyup",(e)=>{
     }
 });
 
-// =====================
-// MOBILE HOLD BUTTON
-// =====================
+// MOBILE
+const btn = document.getElementById("shootBtn");
 
-const shootBtn = document.getElementById("shootBtn");
-
-shootBtn.addEventListener("touchstart",()=>{
-    if(player.holding){
-        charging = true;
-    }
+btn.addEventListener("touchstart",()=>{
+    charging = true;
 });
 
-shootBtn.addEventListener("touchend",()=>{
-    if(charging){
-        shoot();
-        charging = false;
-        power = 0;
-    }
+btn.addEventListener("touchend",()=>{
+    shoot();
+    charging = false;
+    power = 0;
 });
 
 // =====================
-// SHOOT (POWER BASED)
+// SHOOT (FIXED)
 // =====================
 
 function shoot(){
+
     if(!player.holding) return;
 
     player.holding = false;
     ball.moving = true;
 
-    let strength = Math.min(power / 20, 1);
+    // ensure starting from player
+    ball.x = player.x + 20;
+    ball.y = player.y;
 
-    ball.dx = 6 + strength * 6;
-    ball.dy = -10 - strength * 8;
+    let strength = Math.min(power / 25, 1);
+
+    ball.dx = 7 + strength * 7;
+    ball.dy = -10 - strength * 10;
 }
 
 // =====================
@@ -206,7 +200,7 @@ function resetBall(){
 }
 
 // =====================
-// UPDATE PLAYER
+// PLAYER
 // =====================
 
 function updatePlayer(){
@@ -225,13 +219,13 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL UPDATE
+// BALL PHYSICS (FIXED)
 // =====================
 
 function updateBall(){
 
     if(charging){
-        power++;
+        power += 1.2;
         if(power > 100) power = 100;
     }
 
@@ -242,6 +236,7 @@ function updateBall(){
 
     ball.dy += ball.gravity;
 
+    // floor
     if(ball.y > canvas.height - 20){
         resetBall();
     }
@@ -256,7 +251,7 @@ function updateBall(){
         ball.dx *= -0.8;
     }
 
-    // SCORE
+    // SCORE (must go down)
     if(
         ball.x > hoop.x &&
         ball.x < hoop.x + hoop.w &&
@@ -268,6 +263,7 @@ function updateBall(){
         resetBall();
     }
 
+    // out of bounds
     if(ball.x < 0 || ball.x > canvas.width){
         resetBall();
     }
@@ -279,9 +275,11 @@ function updateBall(){
 
 function draw(){
 
+    // background
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
+    // ground
     ctx.fillStyle = "#c27c3e";
     ctx.fillRect(0,500,canvas.width,100);
 
@@ -308,12 +306,26 @@ function draw(){
     ctx.fillStyle = "red";
     ctx.fillRect(hoop.x, hoop.y, hoop.w, hoop.h);
 
+    // 🧵 NET (NEW)
+    ctx.strokeStyle = "white";
+    ctx.beginPath();
+    ctx.moveTo(hoop.x, hoop.y + 10);
+    ctx.lineTo(hoop.x + 10, hoop.y + 60);
+    ctx.lineTo(hoop.x + 20, hoop.y + 70);
+    ctx.lineTo(hoop.x + 30, hoop.y + 80);
+    ctx.lineTo(hoop.x + 40, hoop.y + 70);
+    ctx.lineTo(hoop.x + 50, hoop.y + 60);
+    ctx.lineTo(hoop.x + 60, hoop.y + 70);
+    ctx.lineTo(hoop.x + 70, hoop.y + 60);
+    ctx.lineTo(hoop.x + 80, hoop.y + 10);
+    ctx.stroke();
+
     // power bar
     ctx.fillStyle = "black";
-    ctx.fillRect(20, 80, 100, 10);
+    ctx.fillRect(20,80,100,10);
 
     ctx.fillStyle = "lime";
-    ctx.fillRect(20, 80, power, 10);
+    ctx.fillRect(20,80,power,10);
 }
 
 // =====================
@@ -321,11 +333,9 @@ function draw(){
 // =====================
 
 function loop(){
-
     updatePlayer();
     updateBall();
     draw();
-
     requestAnimationFrame(loop);
 }
 
