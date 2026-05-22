@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="3D Basketball Game", layout="wide")
 
-st.title("🏀 3D Basketball Game (Mobile + Desktop)")
+st.title("🏀 3D Basketball Game (Fixed + Improved)")
 
 html_code = """
 <!DOCTYPE html>
@@ -17,28 +17,22 @@ html_code = """
 body {
     margin: 0;
     overflow: hidden;
-    background: #0f172a;
     font-family: Arial;
 }
 
+/* UI */
 #ui {
     position: absolute;
     top: 10px;
     left: 10px;
     color: white;
-    font-size: 20px;
     background: rgba(0,0,0,0.5);
     padding: 10px;
     border-radius: 10px;
+    font-size: 18px;
 }
 
-button {
-    font-size: 20px;
-    padding: 15px;
-    margin: 5px;
-    border-radius: 10px;
-}
-
+/* mobile controls */
 #controls {
     position: absolute;
     bottom: 20px;
@@ -46,110 +40,131 @@ button {
     transform: translateX(-50%);
 }
 
+button {
+    font-size: 20px;
+    padding: 12px;
+    margin: 4px;
+    border-radius: 10px;
+}
 </style>
 </head>
 
 <body>
 
-<div id="ui">
-Score: <span id="score">0</span>
-</div>
+<div id="ui">Score: <span id="score">0</span></div>
 
 <div id="controls">
-<button onclick="moveLeft()">⬅️</button>
+<button onclick="left()">⬅️</button>
 <button onclick="jump()">⬆️</button>
-<button onclick="moveRight()">➡️</button>
+<button onclick="right()">➡️</button>
 <button onclick="shoot()">🏀 Shoot</button>
 </div>
 
 <script>
 
-// ==========================
-// BASIC SETUP
-// ==========================
+// ======================
+// SCENE
+// ======================
 
 let scene = new THREE.Scene();
+
+// SKY BACKGROUND (FIXED)
 scene.background = new THREE.Color(0x87ceeb);
 
-let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 5, 12);
+// CAMERA (FIXED ANGLE)
+let camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth/window.innerHeight,
+    0.1,
+    1000
+);
 
+camera.position.set(0, 6, 16);
+camera.lookAt(0, 3, 0);
+
+// RENDERER
 let renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// ==========================
 // LIGHT
-// ==========================
-
 let light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5,10,5);
 scene.add(light);
 
-// ==========================
+// ======================
 // COURT
-// ==========================
+// ======================
 
-let floorGeo = new THREE.PlaneGeometry(30, 20);
-let floorMat = new THREE.MeshStandardMaterial({color:0xd2691e});
-let floor = new THREE.Mesh(floorGeo, floorMat);
+let floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 25),
+    new THREE.MeshStandardMaterial({color:0xd2691e})
+);
 floor.rotation.x = -Math.PI/2;
 scene.add(floor);
 
-// ==========================
-// PLAYER
-// ==========================
+// ======================
+// PLAYER (FIXED HEAD)
+// ======================
 
-let playerGeo = new THREE.BoxGeometry(1,2,1);
-let playerMat = new THREE.MeshStandardMaterial({color:0x2563eb});
-let player = new THREE.Mesh(playerGeo, playerMat);
-player.position.set(-10,1,0);
-scene.add(player);
+let body = new THREE.Mesh(
+    new THREE.BoxGeometry(1,2,1),
+    new THREE.MeshStandardMaterial({color:0x2563eb})
+);
+body.position.set(-10,1,0);
+scene.add(body);
 
-// ==========================
+// HEAD (FIXED MISSING PART)
+let head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.4,16,16),
+    new THREE.MeshStandardMaterial({color:0xffd39b})
+);
+scene.add(head);
+
+// ======================
 // BALL
-// ==========================
+// ======================
 
-let ballGeo = new THREE.SphereGeometry(0.3,16,16);
-let ballMat = new THREE.MeshStandardMaterial({color:0xffa500});
-let ball = new THREE.Mesh(ballGeo, ballMat);
+let ball = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3,16,16),
+    new THREE.MeshStandardMaterial({color:0xff8800})
+);
 scene.add(ball);
 
 let ballVel = {x:0,y:0,z:0};
-let holdingBall = true;
+let holding = true;
 
-// ==========================
-// HOOP (FIXED TO WALL)
-// ==========================
+// ======================
+// HOOP (HIGHER + FIXED WALL)
+// ======================
 
-let backboardGeo = new THREE.BoxGeometry(0.2,3,2);
-let backboardMat = new THREE.MeshStandardMaterial({color:0xffffff});
-let backboard = new THREE.Mesh(backboardGeo, backboardMat);
-backboard.position.set(12,3,0);
+let backboard = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3,4,2),
+    new THREE.MeshStandardMaterial({color:0xffffff})
+);
+
+backboard.position.set(15,6,0);
 scene.add(backboard);
 
-// rim
-let rimGeo = new THREE.TorusGeometry(0.7,0.05,16,100);
-let rimMat = new THREE.MeshStandardMaterial({color:0xff0000});
-let rim = new THREE.Mesh(rimGeo, rimMat);
-rim.position.set(11,2.5,0);
+// rim (higher now)
+let rim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.8,0.05,16,100),
+    new THREE.MeshStandardMaterial({color:0xff0000})
+);
+
+rim.position.set(14,5,0);
 rim.rotation.x = Math.PI/2;
 scene.add(rim);
 
-// hoop center
-let hoopX = 11;
-let hoopY = 2.5;
-let hoopZ = 0;
-
-// ==========================
-// GAME VARIABLES
-// ==========================
+// ======================
+// GAME DATA
+// ======================
 
 let score = 0;
 
-// ==========================
+// ======================
 // CONTROLS
-// ==========================
+// ======================
 
 let keys = {};
 
@@ -165,39 +180,55 @@ document.addEventListener("keyup",(e)=>{
     keys[e.code] = false;
 });
 
-// ==========================
-// MOBILE BUTTONS
-// ==========================
-
-function moveLeft(){ player.position.x -= 0.7; }
-function moveRight(){ player.position.x += 0.7; }
+// MOBILE
+function left(){ body.position.x -= 0.6; }
+function right(){ body.position.x += 0.6; }
 
 function jump(){
-    if(player.position.y <= 1){
-        player.position.y = 3;
+    if(body.position.y <= 1){
+        body.position.y = 3;
     }
 }
 
 function shoot(){
-    if(!holdingBall) return;
 
-    holdingBall = false;
+    if(!holding) return;
 
-    ball.position.set(player.position.x, 2, player.position.z);
+    holding = false;
 
-    ballVel.x = 0.2;
+    ball.position.set(body.position.x,2,body.position.z);
+
+    ballVel.x = 0.25;
     ballVel.y = 0.35;
     ballVel.z = 0;
 }
 
-// ==========================
-// UPDATE BALL
-// ==========================
+// ======================
+// UPDATE
+// ======================
+
+function updatePlayer(){
+
+    if(keys["ArrowLeft"] || keys["KeyA"]){
+        body.position.x -= 0.2;
+    }
+
+    if(keys["ArrowRight"] || keys["KeyD"]){
+        body.position.x += 0.2;
+    }
+
+    // sync head position (FIXED BUG)
+    head.position.set(
+        body.position.x,
+        body.position.y + 1.4,
+        body.position.z
+    );
+}
 
 function updateBall(){
 
-    if(holdingBall){
-        ball.position.set(player.position.x, 2, player.position.z);
+    if(holding){
+        ball.position.set(body.position.x,2,0);
         return;
     }
 
@@ -205,31 +236,32 @@ function updateBall(){
     ball.position.y += ballVel.y;
     ball.position.z += ballVel.z;
 
-    ballVel.y -= 0.015; // gravity
+    ballVel.y -= 0.015;
 
-    // ground
+    // floor
     if(ball.position.y < 0.3){
         ball.position.y = 0.3;
-        ballVel.y *= -0.6;
+        ballVel.y *= -0.5;
     }
 
     // backboard collision
-    if(ball.position.x > 10.8 &&
-       ball.position.y < 5 &&
-       ball.position.y > 1 &&
-       Math.abs(ball.position.z) < 1.2){
-
+    if(
+        ball.position.x > 14.5 &&
+        ball.position.y < 7 &&
+        ball.position.y > 3 &&
+        Math.abs(ball.position.z) < 1
+    ){
         ballVel.x *= -0.8;
     }
 
-    // SCORE CHECK (must go DOWN into hoop)
-    let dx = ball.position.x - hoopX;
-    let dy = ball.position.y - hoopY;
-    let dz = ball.position.z - hoopZ;
+    // SCORE ONLY FROM ABOVE
+    let dx = ball.position.x - 14;
+    let dy = ball.position.y - 5;
+    let dz = ball.position.z;
 
     let dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
 
-    if(dist < 0.8 && ballVel.y < 0){
+    if(dist < 0.7 && ballVel.y < 0){
 
         score++;
         document.getElementById("score").innerText = score;
@@ -237,35 +269,19 @@ function updateBall(){
         resetBall();
     }
 
-    // reset if missed
-    if(ball.position.y < -5 || ball.position.x > 20){
+    if(ball.position.y < -5){
         resetBall();
     }
 }
 
 function resetBall(){
-    holdingBall = true;
+    holding = true;
     ballVel = {x:0,y:0,z:0};
 }
 
-// ==========================
-// UPDATE PLAYER (keyboard)
-// ==========================
-
-function updatePlayer(){
-
-    if(keys["ArrowLeft"] || keys["KeyA"]){
-        player.position.x -= 0.2;
-    }
-
-    if(keys["ArrowRight"] || keys["KeyD"]){
-        player.position.x += 0.2;
-    }
-}
-
-// ==========================
+// ======================
 // LOOP
-// ==========================
+// ======================
 
 function animate(){
     requestAnimationFrame(animate);
@@ -273,15 +289,16 @@ function animate(){
     updatePlayer();
     updateBall();
 
-    renderer.render(scene, camera);
+    renderer.render(scene,camera);
 }
 
 animate();
 
+// resize fix
 window.addEventListener("resize",()=>{
     camera.aspect = window.innerWidth/window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(window.innerWidth,window.innerHeight);
 });
 
 </script>
