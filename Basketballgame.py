@@ -3,9 +3,9 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Basketball Game", layout="wide")
 
-st.title("🏀 Mini Basketball Game")
+st.title("🏀 Basketball Shooter Game")
 
-game_html = """
+html_code = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -13,100 +13,112 @@ game_html = """
     body {
         margin: 0;
         overflow: hidden;
-        background: linear-gradient(to bottom, #87ceeb, #ffffff);
+        background: #87CEEB;
     }
 
     canvas {
+        background: #f4a460;
         display: block;
         margin: auto;
-        background: #f4a460;
-        border: 6px solid black;
+        border: 5px solid black;
         border-radius: 10px;
-    }
-
-    h1 {
-        text-align: center;
-        font-family: Arial;
     }
 </style>
 </head>
 
 <body>
 
-<canvas id="gameCanvas" width="900" height="500"></canvas>
+<canvas id="gameCanvas" width="1000" height="550"></canvas>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let score = 0;
-
-// Ball
-let ball = {
-    x: 120,
-    y: 250,
-    radius: 20,
-    dx: 0,
-    dy: 0,
-    gravity: 0.4
+// =========================
+// PLAYER
+// =========================
+const player = {
+    x: 100,
+    y: 380,
+    width: 50,
+    height: 90,
+    speed: 6
 };
 
-// Hoop
+// =========================
+// BALL
+// =========================
+const ball = {
+    x: player.x + 25,
+    y: player.y,
+    radius: 15,
+    dx: 0,
+    dy: 0,
+    gravity: 0.4,
+    shooting: false
+};
+
+// =========================
+// HOOP
+// =========================
 const hoop = {
-    x: 720,
-    y: 180,
+    x: 820,
+    y: 200,
     width: 80,
     height: 10
 };
 
-// Mouse control
-let dragging = false;
-let startX, startY;
+let score = 0;
 
-canvas.addEventListener("mousedown", (e) => {
-    dragging = true;
-    startX = e.offsetX;
-    startY = e.offsetY;
+// =========================
+// CONTROLS
+// =========================
+const keys = {};
+
+document.addEventListener("keydown", (e) => {
+    keys[e.code] = true;
 });
 
-canvas.addEventListener("mouseup", (e) => {
-    if (dragging) {
-        let endX = e.offsetX;
-        let endY = e.offsetY;
+document.addEventListener("keyup", (e) => {
+    keys[e.code] = false;
 
-        ball.dx = (startX - endX) / 6;
-        ball.dy = (startY - endY) / 6;
+    // SHOOT
+    if (e.code === "Space" && !ball.shooting) {
+        ball.shooting = true;
 
-        dragging = false;
+        // Power based on player direction
+        ball.dx = 10;
+        ball.dy = -12;
     }
 });
 
-function drawCourt() {
-    // Ground
-    ctx.fillStyle = "#d2691e";
-    ctx.fillRect(0, 400, canvas.width, 100);
+// =========================
+// DRAW FUNCTIONS
+// =========================
+function drawPlayer() {
+    // Body
+    ctx.fillStyle = "blue";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
 
-    // Hoop pole
-    ctx.fillStyle = "black";
-    ctx.fillRect(780, 100, 10, 200);
-
-    // Rim
-    ctx.fillStyle = "red";
-    ctx.fillRect(hoop.x, hoop.y, hoop.width, hoop.height);
-
-    // Net
+    // Head
     ctx.beginPath();
-    ctx.moveTo(hoop.x, hoop.y + 10);
-    ctx.lineTo(hoop.x + 15, hoop.y + 40);
-    ctx.lineTo(hoop.x + 65, hoop.y + 40);
-    ctx.lineTo(hoop.x + 80, hoop.y + 10);
-    ctx.strokeStyle = "white";
+    ctx.arc(player.x + 25, player.y - 20, 20, 0, Math.PI * 2);
+    ctx.fillStyle = "#f5cfa0";
+    ctx.fill();
+
+    // Legs
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 4;
+
+    ctx.beginPath();
+    ctx.moveTo(player.x + 15, player.y + 90);
+    ctx.lineTo(player.x + 10, player.y + 120);
     ctx.stroke();
 
-    // Score
-    ctx.fillStyle = "black";
-    ctx.font = "30px Arial";
-    ctx.fillText("Score: " + score, 30, 50);
+    ctx.beginPath();
+    ctx.moveTo(player.x + 35, player.y + 90);
+    ctx.lineTo(player.x + 40, player.y + 120);
+    ctx.stroke();
 }
 
 function drawBall() {
@@ -114,59 +126,171 @@ function drawBall() {
     ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
     ctx.fillStyle = "orange";
     ctx.fill();
+
     ctx.strokeStyle = "black";
     ctx.stroke();
 }
 
-function updateBall() {
-    ball.x += ball.dx;
-    ball.y += ball.dy;
+function drawCourt() {
+    // Floor
+    ctx.fillStyle = "#d2691e";
+    ctx.fillRect(0, 470, canvas.width, 80);
 
-    ball.dy += ball.gravity;
+    // Hoop pole
+    ctx.fillStyle = "black";
+    ctx.fillRect(900, 120, 10, 250);
 
-    // Floor bounce
-    if (ball.y + ball.radius > 400) {
-        ball.y = 400 - ball.radius;
-        ball.dy *= -0.7;
+    // Rim
+    ctx.fillStyle = "red";
+    ctx.fillRect(hoop.x, hoop.y, hoop.width, hoop.height);
+
+    // Backboard
+    ctx.fillStyle = "white";
+    ctx.fillRect(890, 140, 10, 100);
+
+    // Score
+    ctx.fillStyle = "black";
+    ctx.font = "32px Arial";
+    ctx.fillText("Score: " + score, 30, 50);
+
+    // Instructions
+    ctx.font = "22px Arial";
+    ctx.fillText("Move: A/D or Arrow Keys | Hold Space to Shoot", 30, 90);
+}
+
+// =========================
+// MOVEMENT
+// =========================
+let shootPower = 0;
+let charging = false;
+
+function updatePlayer() {
+
+    if (keys["ArrowLeft"] || keys["KeyA"]) {
+        player.x -= player.speed;
     }
 
-    // Wall bounce
-    if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
-        ball.dx *= -0.8;
+    if (keys["ArrowRight"] || keys["KeyD"]) {
+        player.x += player.speed;
     }
 
-    // Score detection
-    if (
-        ball.x > hoop.x &&
-        ball.x < hoop.x + hoop.width &&
-        ball.y > hoop.y &&
-        ball.y < hoop.y + 20
-    ) {
-        score += 1;
+    // Keep in bounds
+    if (player.x < 0) player.x = 0;
+    if (player.x + player.width > canvas.width)
+        player.x = canvas.width - player.width;
 
-        // Reset ball
-        ball.x = 120;
-        ball.y = 250;
-        ball.dx = 0;
-        ball.dy = 0;
+    // Hold ball if not shooting
+    if (!ball.shooting) {
+        ball.x = player.x + 55;
+        ball.y = player.y + 20;
+    }
+
+    // Charge shot
+    if (keys["Space"]) {
+        charging = true;
+
+        if (shootPower < 20) {
+            shootPower += 0.3;
+        }
     }
 }
 
+// =========================
+// SHOOTING
+// =========================
+document.addEventListener("keyup", (e) => {
+
+    if (e.code === "Space" && !ball.shooting) {
+
+        ball.shooting = true;
+
+        ball.dx = shootPower;
+        ball.dy = -shootPower;
+
+        shootPower = 0;
+        charging = false;
+    }
+});
+
+function updateBall() {
+
+    if (ball.shooting) {
+
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        ball.dy += ball.gravity;
+
+        // Bounce floor
+        if (ball.y + ball.radius > 470) {
+            ball.y = 470 - ball.radius;
+            ball.dy *= -0.7;
+        }
+
+        // Wall bounce
+        if (ball.x + ball.radius > canvas.width ||
+            ball.x - ball.radius < 0) {
+            ball.dx *= -0.8;
+        }
+
+        // Score
+        if (
+            ball.x > hoop.x &&
+            ball.x < hoop.x + hoop.width &&
+            ball.y > hoop.y &&
+            ball.y < hoop.y + 20
+        ) {
+
+            score += 1;
+
+            resetBall();
+        }
+
+        // Reset if ball falls away
+        if (ball.y > canvas.height + 100) {
+            resetBall();
+        }
+    }
+}
+
+function resetBall() {
+    ball.shooting = false;
+    ball.dx = 0;
+    ball.dy = 0;
+}
+
+// =========================
+// GAME LOOP
+// =========================
 function gameLoop() {
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     drawCourt();
+    drawPlayer();
     drawBall();
+
+    updatePlayer();
     updateBall();
+
+    // Power bar
+    if (charging) {
+        ctx.fillStyle = "green";
+        ctx.fillRect(30, 110, shootPower * 10, 20);
+
+        ctx.strokeStyle = "black";
+        ctx.strokeRect(30, 110, 200, 20);
+    }
 
     requestAnimationFrame(gameLoop);
 }
 
 gameLoop();
+
 </script>
 
 </body>
 </html>
 """
 
-components.html(game_html, height=550)
+components.html(html_code, height=600)
