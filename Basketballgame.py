@@ -1,319 +1,172 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(
-    page_title="🏀 Basketball Game",
-    page_icon="🏀",
-    layout="wide"
-)
+st.set_page_config(page_title="Basketball Game", layout="wide")
 
-st.markdown("# 🏀 Basketball Shooter")
-st.markdown("""
-### Controls
-- ⬅ Move Left
-- ➡ Move Right
-- SPACEBAR = Shoot
-""")
+st.title("🏀 Mini Basketball Game")
 
-game = """
+game_html = """
 <!DOCTYPE html>
 <html>
 <head>
-
 <style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: linear-gradient(to bottom, #87ceeb, #ffffff);
+    }
 
-body{
-    margin:0;
-    overflow:hidden;
-    background:#0b1220;
-}
+    canvas {
+        display: block;
+        margin: auto;
+        background: #f4a460;
+        border: 6px solid black;
+        border-radius: 10px;
+    }
 
-/* GAME AREA */
-
-#game{
-    position:relative;
-    width:100%;
-    height:600px;
-    overflow:hidden;
-    background:linear-gradient(#102040,#07111f);
-    border-radius:20px;
-    border:5px solid white;
-}
-
-/* COURT */
-
-#court{
-    position:absolute;
-    bottom:0;
-    width:100%;
-    height:140px;
-    background:#c26a00;
-    border-top:5px solid white;
-}
-
-/* PLAYER */
-
-#player{
-    position:absolute;
-    bottom:100px;
-    left:100px;
-    font-size:55px;
-    transition:left 0.03s linear;
-}
-
-/* BALL */
-
-#ball{
-    position:absolute;
-    bottom:135px;
-    left:125px;
-    font-size:28px;
-}
-
-/* HOOP */
-
-#hoop{
-    position:absolute;
-    right:120px;
-    top:140px;
-    font-size:70px;
-}
-
-/* SCORE */
-
-#scoreboard{
-    position:absolute;
-    top:20px;
-    left:20px;
-    color:white;
-    font-size:30px;
-    font-weight:bold;
-    z-index:100;
-}
-
-/* POWER BAR */
-
-#powerBox{
-    position:absolute;
-    left:20px;
-    bottom:20px;
-    width:220px;
-    height:25px;
-    border:3px solid white;
-    background:#222;
-}
-
-#power{
-    width:50%;
-    height:100%;
-    background:lime;
-}
-
-/* TEXT */
-
-#instructions{
-    position:absolute;
-    right:20px;
-    top:20px;
-    color:white;
-    font-size:20px;
-}
-
+    h1 {
+        text-align: center;
+        font-family: Arial;
+    }
 </style>
-
 </head>
 
 <body>
 
-<div id="game">
-
-    <div id="scoreboard">
-        Score: <span id="score">0</span>
-    </div>
-
-    <div id="instructions">
-        ⬅ ➡ Move<br>
-        SPACE Shoot
-    </div>
-
-    <div id="hoop">🧺</div>
-
-    <div id="player">⛹️</div>
-
-    <div id="ball">🏀</div>
-
-    <div id="court"></div>
-
-    <div id="powerBox">
-        <div id="power"></div>
-    </div>
-
-</div>
+<canvas id="gameCanvas" width="900" height="500"></canvas>
 
 <script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-const player = document.getElementById("player");
-const ball = document.getElementById("ball");
-const scoreText = document.getElementById("score");
-const powerBar = document.getElementById("power");
-
-let playerX = 100;
 let score = 0;
-let shooting = false;
 
-let power = 50;
-let direction = 1;
+// Ball
+let ball = {
+    x: 120,
+    y: 250,
+    radius: 20,
+    dx: 0,
+    dy: 0,
+    gravity: 0.4
+};
 
-/* ======================================
-   POWER BAR
-====================================== */
+// Hoop
+const hoop = {
+    x: 720,
+    y: 180,
+    width: 80,
+    height: 10
+};
 
-setInterval(() => {
+// Mouse control
+let dragging = false;
+let startX, startY;
 
-    power += direction * 2;
-
-    if(power >= 100){
-        direction = -1;
-    }
-
-    if(power <= 10){
-        direction = 1;
-    }
-
-    powerBar.style.width = power + "%";
-
-    if(power > 70){
-        powerBar.style.background = "red";
-    }
-    else if(power > 40){
-        powerBar.style.background = "orange";
-    }
-    else{
-        powerBar.style.background = "lime";
-    }
-
-}, 30);
-
-/* ======================================
-   MOVE PLAYER
-====================================== */
-
-document.addEventListener("keydown", (e) => {
-
-    if(e.key === "ArrowLeft"){
-
-        playerX -= 20;
-
-        if(playerX < 0){
-            playerX = 0;
-        }
-
-        player.style.left = playerX + "px";
-
-        if(!shooting){
-            ball.style.left = (playerX + 22) + "px";
-        }
-    }
-
-    if(e.key === "ArrowRight"){
-
-        playerX += 20;
-
-        if(playerX > window.innerWidth - 300){
-            playerX = window.innerWidth - 300;
-        }
-
-        player.style.left = playerX + "px";
-
-        if(!shooting){
-            ball.style.left = (playerX + 22) + "px";
-        }
-    }
-
-    if(e.code === "Space" && !shooting){
-        shoot();
-    }
-
+canvas.addEventListener("mousedown", (e) => {
+    dragging = true;
+    startX = e.offsetX;
+    startY = e.offsetY;
 });
 
-/* ======================================
-   SHOOT FUNCTION
-====================================== */
+canvas.addEventListener("mouseup", (e) => {
+    if (dragging) {
+        let endX = e.offsetX;
+        let endY = e.offsetY;
 
-function shoot(){
+        ball.dx = (startX - endX) / 6;
+        ball.dy = (startY - endY) / 6;
 
-    shooting = true;
+        dragging = false;
+    }
+});
 
-    let x = playerX + 22;
-    let y = 135;
+function drawCourt() {
+    // Ground
+    ctx.fillStyle = "#d2691e";
+    ctx.fillRect(0, 400, canvas.width, 100);
 
-    let velocityX = 7 + (power / 18);
-    let velocityY = 14 + (power / 10);
+    // Hoop pole
+    ctx.fillStyle = "black";
+    ctx.fillRect(780, 100, 10, 200);
 
-    const gravity = 0.45;
+    // Rim
+    ctx.fillStyle = "red";
+    ctx.fillRect(hoop.x, hoop.y, hoop.width, hoop.height);
 
-    const hoopX = window.innerWidth - 220;
-    const hoopY = 240;
+    // Net
+    ctx.beginPath();
+    ctx.moveTo(hoop.x, hoop.y + 10);
+    ctx.lineTo(hoop.x + 15, hoop.y + 40);
+    ctx.lineTo(hoop.x + 65, hoop.y + 40);
+    ctx.lineTo(hoop.x + 80, hoop.y + 10);
+    ctx.strokeStyle = "white";
+    ctx.stroke();
 
-    const interval = setInterval(() => {
-
-        x += velocityX;
-        y += velocityY;
-
-        velocityY -= gravity;
-
-        ball.style.left = x + "px";
-        ball.style.bottom = y + "px";
-
-        /* SCORE */
-
-        if(
-            x > hoopX &&
-            x < hoopX + 70 &&
-            y > hoopY &&
-            y < hoopY + 60
-        ){
-
-            score++;
-
-            scoreText.innerText = score;
-
-            clearInterval(interval);
-
-            resetBall();
-        }
-
-        /* MISS */
-
-        if(
-            y < -50 ||
-            x > window.innerWidth + 100
-        ){
-
-            clearInterval(interval);
-
-            resetBall();
-        }
-
-    }, 20);
+    // Score
+    ctx.fillStyle = "black";
+    ctx.font = "30px Arial";
+    ctx.fillText("Score: " + score, 30, 50);
 }
 
-/* ======================================
-   RESET BALL
-====================================== */
-
-function resetBall(){
-
-    shooting = false;
-
-    ball.style.left = (playerX + 22) + "px";
-    ball.style.bottom = "135px";
+function drawBall() {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = "orange";
+    ctx.fill();
+    ctx.strokeStyle = "black";
+    ctx.stroke();
 }
 
+function updateBall() {
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+
+    ball.dy += ball.gravity;
+
+    // Floor bounce
+    if (ball.y + ball.radius > 400) {
+        ball.y = 400 - ball.radius;
+        ball.dy *= -0.7;
+    }
+
+    // Wall bounce
+    if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+        ball.dx *= -0.8;
+    }
+
+    // Score detection
+    if (
+        ball.x > hoop.x &&
+        ball.x < hoop.x + hoop.width &&
+        ball.y > hoop.y &&
+        ball.y < hoop.y + 20
+    ) {
+        score += 1;
+
+        // Reset ball
+        ball.x = 120;
+        ball.y = 250;
+        ball.dx = 0;
+        ball.dy = 0;
+    }
+}
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawCourt();
+    drawBall();
+    updateBall();
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
 </script>
 
 </body>
 </html>
 """
 
-components.html(game, height=620, scrolling=False)
+components.html(game_html, height=550)
