@@ -1,131 +1,126 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# =========================================================
-# PAGE CONFIG
-# =========================================================
-
 st.set_page_config(
-    page_title="🏀 Keyboard Basketball",
+    page_title="🏀 Basketball Game",
     page_icon="🏀",
     layout="wide"
 )
 
-# =========================================================
-# TITLE
-# =========================================================
-
+st.markdown("# 🏀 Basketball Shooter")
 st.markdown("""
-# 🏀 Keyboard Basketball Game
-
 ### Controls
-- ⬅ LEFT ARROW = Move Left
-- ➡ RIGHT ARROW = Move Right
-- SPACEBAR = Shoot Ball
-
-Try to score in the basket!
+- ⬅ Move Left
+- ➡ Move Right
+- SPACEBAR = Shoot
 """)
 
-# =========================================================
-# HTML + CSS + JAVASCRIPT GAME
-# =========================================================
-
-game_code = """
+game = """
 <!DOCTYPE html>
 <html>
 <head>
 
 <style>
 
-body {
-    margin: 0;
-    overflow: hidden;
-    background: #07111f;
-    font-family: Arial;
+body{
+    margin:0;
+    overflow:hidden;
+    background:#0b1220;
 }
 
-#game {
-    position: relative;
-    width: 100%;
-    height: 650px;
-    background: linear-gradient(to bottom, #0f172a, #111827);
-    overflow: hidden;
-    border-radius: 20px;
-    border: 5px solid white;
+/* GAME AREA */
+
+#game{
+    position:relative;
+    width:100%;
+    height:600px;
+    overflow:hidden;
+    background:linear-gradient(#102040,#07111f);
+    border-radius:20px;
+    border:5px solid white;
 }
 
 /* COURT */
-#court {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    height: 180px;
-    background: #c26a00;
-    border-top: 8px solid white;
+
+#court{
+    position:absolute;
+    bottom:0;
+    width:100%;
+    height:140px;
+    background:#c26a00;
+    border-top:5px solid white;
 }
 
 /* PLAYER */
-#player {
-    position: absolute;
-    bottom: 140px;
-    left: 120px;
-    font-size: 70px;
-    transition: left 0.05s linear;
+
+#player{
+    position:absolute;
+    bottom:100px;
+    left:100px;
+    font-size:55px;
+    transition:left 0.03s linear;
 }
 
 /* BALL */
-#ball {
-    position: absolute;
-    bottom: 185px;
-    left: 145px;
-    font-size: 40px;
+
+#ball{
+    position:absolute;
+    bottom:135px;
+    left:125px;
+    font-size:28px;
 }
 
 /* HOOP */
-#hoop {
-    position: absolute;
-    right: 120px;
-    top: 160px;
-    font-size: 100px;
+
+#hoop{
+    position:absolute;
+    right:120px;
+    top:140px;
+    font-size:70px;
 }
 
-/* SCOREBOARD */
-#scoreboard {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    color: white;
-    font-size: 35px;
-    font-weight: bold;
+/* SCORE */
+
+#scoreboard{
+    position:absolute;
+    top:20px;
+    left:20px;
+    color:white;
+    font-size:30px;
+    font-weight:bold;
+    z-index:100;
 }
 
 /* POWER BAR */
-#powerContainer {
-    position: absolute;
-    bottom: 30px;
-    left: 30px;
-    width: 250px;
-    height: 30px;
-    border: 3px solid white;
-    background: #222;
+
+#powerBox{
+    position:absolute;
+    left:20px;
+    bottom:20px;
+    width:220px;
+    height:25px;
+    border:3px solid white;
+    background:#222;
 }
 
-#powerBar {
-    width: 50%;
-    height: 100%;
-    background: lime;
+#power{
+    width:50%;
+    height:100%;
+    background:lime;
 }
 
-.instructions {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    color: white;
-    font-size: 22px;
-    text-align: right;
+/* TEXT */
+
+#instructions{
+    position:absolute;
+    right:20px;
+    top:20px;
+    color:white;
+    font-size:20px;
 }
 
 </style>
+
 </head>
 
 <body>
@@ -136,9 +131,9 @@ body {
         Score: <span id="score">0</span>
     </div>
 
-    <div class="instructions">
+    <div id="instructions">
         ⬅ ➡ Move<br>
-        SPACE = Shoot
+        SPACE Shoot
     </div>
 
     <div id="hoop">🧺</div>
@@ -149,42 +144,40 @@ body {
 
     <div id="court"></div>
 
-    <div id="powerContainer">
-        <div id="powerBar"></div>
+    <div id="powerBox">
+        <div id="power"></div>
     </div>
 
 </div>
 
 <script>
 
-let player = document.getElementById("player");
-let ball = document.getElementById("ball");
-let scoreText = document.getElementById("score");
-let powerBar = document.getElementById("powerBar");
+const player = document.getElementById("player");
+const ball = document.getElementById("ball");
+const scoreText = document.getElementById("score");
+const powerBar = document.getElementById("power");
 
-let playerX = 120;
-
+let playerX = 100;
 let score = 0;
-
 let shooting = false;
 
 let power = 50;
-let powerDirection = 1;
+let direction = 1;
 
-/* =========================================
-   POWER BAR ANIMATION
-========================================= */
+/* ======================================
+   POWER BAR
+====================================== */
 
 setInterval(() => {
 
-    power += powerDirection * 2;
+    power += direction * 2;
 
     if(power >= 100){
-        powerDirection = -1;
+        direction = -1;
     }
 
     if(power <= 10){
-        powerDirection = 1;
+        direction = 1;
     }
 
     powerBar.style.width = power + "%";
@@ -201,16 +194,15 @@ setInterval(() => {
 
 }, 30);
 
-/* =========================================
-   KEYBOARD CONTROLS
-========================================= */
+/* ======================================
+   MOVE PLAYER
+====================================== */
 
-document.addEventListener("keydown", function(event){
+document.addEventListener("keydown", (e) => {
 
-    // LEFT
-    if(event.key === "ArrowLeft"){
+    if(e.key === "ArrowLeft"){
 
-        playerX -= 25;
+        playerX -= 20;
 
         if(playerX < 0){
             playerX = 0;
@@ -219,14 +211,13 @@ document.addEventListener("keydown", function(event){
         player.style.left = playerX + "px";
 
         if(!shooting){
-            ball.style.left = (playerX + 25) + "px";
+            ball.style.left = (playerX + 22) + "px";
         }
     }
 
-    // RIGHT
-    if(event.key === "ArrowRight"){
+    if(e.key === "ArrowRight"){
 
-        playerX += 25;
+        playerX += 20;
 
         if(playerX > window.innerWidth - 300){
             playerX = window.innerWidth - 300;
@@ -235,53 +226,52 @@ document.addEventListener("keydown", function(event){
         player.style.left = playerX + "px";
 
         if(!shooting){
-            ball.style.left = (playerX + 25) + "px";
+            ball.style.left = (playerX + 22) + "px";
         }
     }
 
-    // SHOOT
-    if(event.code === "Space" && !shooting){
-
-        shootBall();
+    if(e.code === "Space" && !shooting){
+        shoot();
     }
 
 });
 
-/* =========================================
+/* ======================================
    SHOOT FUNCTION
-========================================= */
+====================================== */
 
-function shootBall(){
+function shoot(){
 
     shooting = true;
 
-    let ballX = playerX + 25;
-    let ballY = 185;
+    let x = playerX + 22;
+    let y = 135;
 
-    let velocityX = 10 + (power / 10);
-    let velocityY = 18 + (power / 6);
+    let velocityX = 7 + (power / 18);
+    let velocityY = 14 + (power / 10);
 
-    let gravity = 0.6;
+    const gravity = 0.45;
 
-    let hoopX = window.innerWidth - 240;
-    let hoopY = 170;
+    const hoopX = window.innerWidth - 220;
+    const hoopY = 240;
 
-    let interval = setInterval(() => {
+    const interval = setInterval(() => {
 
-        ballX += velocityX;
-        ballY += velocityY;
+        x += velocityX;
+        y += velocityY;
 
         velocityY -= gravity;
 
-        ball.style.left = ballX + "px";
-        ball.style.bottom = ballY + "px";
+        ball.style.left = x + "px";
+        ball.style.bottom = y + "px";
 
-        // SCORE DETECTION
+        /* SCORE */
+
         if(
-            ballX > hoopX &&
-            ballX < hoopX + 90 &&
-            ballY > hoopY &&
-            ballY < hoopY + 60
+            x > hoopX &&
+            x < hoopX + 70 &&
+            y > hoopY &&
+            y < hoopY + 60
         ){
 
             score++;
@@ -293,8 +283,12 @@ function shootBall(){
             resetBall();
         }
 
-        // MISS
-        if(ballY < 0 || ballX > window.innerWidth){
+        /* MISS */
+
+        if(
+            y < -50 ||
+            x > window.innerWidth + 100
+        ){
 
             clearInterval(interval);
 
@@ -304,16 +298,16 @@ function shootBall(){
     }, 20);
 }
 
-/* =========================================
+/* ======================================
    RESET BALL
-========================================= */
+====================================== */
 
 function resetBall(){
 
     shooting = false;
 
-    ball.style.bottom = "185px";
-    ball.style.left = (playerX + 25) + "px";
+    ball.style.left = (playerX + 22) + "px";
+    ball.style.bottom = "135px";
 }
 
 </script>
@@ -322,8 +316,4 @@ function resetBall(){
 </html>
 """
 
-# =========================================================
-# DISPLAY GAME
-# =========================================================
-
-components.html(game_code, height=700, scrolling=False)
+components.html(game, height=620, scrolling=False)
