@@ -1,9 +1,9 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Side View Basketball", layout="wide")
+st.set_page_config(page_title="Basketball Fix Scoring", layout="wide")
 
-st.title("🏀 Basketball Game (Side View Hoop + Fixed Shoot)")
+st.title("🏀 Basketball Game (Correct Hoop Entry + Slower Ball)")
 
 html_code = """
 <!DOCTYPE html>
@@ -70,7 +70,7 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 // =====================
-// STATE (FIXED)
+// STATE
 // =====================
 
 let score = 0;
@@ -92,19 +92,21 @@ const ball = {
     r: 12,
     dx: 0,
     dy: 0,
-    gravity: 0.45,
+    gravity: 0.35,   // 🐢 slower fall
     moving: false
 };
 
 // =====================
-// SIDE VIEW HOOP (IMPORTANT FIX)
+// HOOP
 // =====================
 
 const hoop = {
     x: 980,
-    y: 230,
-    w: 55,   // horizontal rim width
-    h: 10    // thickness
+    y: 240,
+    w: 60,
+    h: 18,
+    rimTop: 240,
+    rimBottom: 255
 };
 
 const backboard = {
@@ -115,7 +117,7 @@ const backboard = {
 };
 
 // =====================
-// INPUT SYSTEM (FIXED SHOOT)
+// INPUT
 // =====================
 
 let keys = {};
@@ -134,8 +136,8 @@ document.addEventListener("keyup",(e)=>{
 
     keys[e.code] = false;
 
-    if(e.code === "KeyT" && charging){
-        shoot();
+    if(e.code === "KeyT"){
+        if(charging) shoot();
         charging = false;
         power = 0;
     }
@@ -149,15 +151,13 @@ btn.addEventListener("touchstart",()=>{
 });
 
 btn.addEventListener("touchend",()=>{
-    if(charging){
-        shoot();
-    }
+    if(charging) shoot();
     charging = false;
     power = 0;
 });
 
 // =====================
-// SHOOT (STABLE)
+// SHOOT (SLOWER + LOWER ARC)
 // =====================
 
 function shoot(){
@@ -172,8 +172,8 @@ function shoot(){
 
     let strength = Math.min(power / 25, 1);
 
-    ball.dx = 7 + strength * 6;
-    ball.dy = -10 - strength * 9;
+    ball.dx = 4 + strength * 4;     // 🐢 slower horizontal
+    ball.dy = -7 - strength * 6;    // 🐢 lower arc
 }
 
 // =====================
@@ -205,13 +205,13 @@ function updatePlayer(){
 }
 
 // =====================
-// BALL PHYSICS
+// BALL
 // =====================
 
 function updateBall(){
 
     if(charging){
-        power += 1.5;
+        power += 1.2;
         if(power > 100) power = 100;
     }
 
@@ -226,24 +226,28 @@ function updateBall(){
         resetBall();
     }
 
-    // backboard bounce
+    // backboard bounce (still allowed)
     if(
         ball.x > backboard.x &&
         ball.x < backboard.x + backboard.w &&
         ball.y > backboard.y &&
         ball.y < backboard.y + backboard.h
     ){
-        ball.dx *= -0.8;
+        ball.dx *= -0.7;
     }
 
     // =====================
-    // SIDE VIEW SCORE ZONE FIX
+    // 🎯 REAL HOOP ENTRY RULE
     // =====================
 
-    let insideRimX = ball.x > hoop.x && ball.x < hoop.x + hoop.w;
-    let nearRimY = ball.y > hoop.y && ball.y < hoop.y + 20;
+    let insideX = ball.x > hoop.x && ball.x < hoop.x + hoop.w;
 
-    if(insideRimX && nearRimY && ball.dy > 0){
+    let enteringFromAbove =
+        ball.y > hoop.rimTop &&
+        ball.y < hoop.rimBottom &&
+        ball.dy > 0; // must be falling
+
+    if(insideX && enteringFromAbove){
         score++;
         document.getElementById("score").innerText = score;
         resetBall();
@@ -251,11 +255,12 @@ function updateBall(){
 }
 
 // =====================
-// DRAW (SIDE VIEW HOOP FIXED)
+// DRAW
 // =====================
 
 function draw(){
 
+    // background
     ctx.fillStyle = "#87CEEB";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -281,10 +286,7 @@ function draw(){
     ctx.fillStyle = "#fff";
     ctx.fillRect(backboard.x, backboard.y, backboard.w, backboard.h);
 
-    // =====================
-    // 🔴 SIDE VIEW RIM (REALISTIC)
-    // =====================
-
+    // rim (side view red)
     ctx.strokeStyle = "red";
     ctx.lineWidth = 5;
 
@@ -293,18 +295,12 @@ function draw(){
     ctx.lineTo(hoop.x + hoop.w, hoop.y);
     ctx.stroke();
 
-    // rim thickness (front edge)
-    ctx.beginPath();
-    ctx.moveTo(hoop.x, hoop.y + hoop.h);
-    ctx.lineTo(hoop.x + hoop.w, hoop.y + hoop.h);
-    ctx.stroke();
-
-    // net (hanging down)
-    ctx.strokeStyle = "#ffffff";
+    // net (visual only)
+    ctx.strokeStyle = "#fff";
     ctx.lineWidth = 1.5;
 
     for(let i=0;i<6;i++){
-        let x = hoop.x + i * 9;
+        let x = hoop.x + i*10;
         ctx.beginPath();
         ctx.moveTo(x, hoop.y);
         ctx.lineTo(hoop.x + hoop.w/2, hoop.y + 60);
